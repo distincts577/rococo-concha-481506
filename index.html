@@ -30,11 +30,48 @@
     --gray-50:#F1EFE8;--gray-100:#D3D1C7;--gray-400:#888780;--gray-600:#5F5E5A;--gray-800:#444441;
     --bg:#f5f5f0;--card:#fff;--text:#1a1a18;--muted:#5F5E5A;--border:#D3D1C7;
     --radius:12px;--radius-sm:8px;
+    --topbar-bg:var(--green);--input-bg:#fff;
   }
+  body.dark{
+    --bg:#0f1410;--card:#1a2117;--text:#e8f0e3;--muted:#8aab7e;--border:#2a3d24;
+    --gray-50:#1e2b1a;--gray-100:#2a3d24;--gray-800:#c5d9be;
+    --green-light:#1a2e14;--blue-light:#0d1e30;--amber-light:#2a1e0a;--red-light:#2a1010;
+    --topbar-bg:#1e3517;--input-bg:#1a2117;
+  }
+  body.dark .field-row input,body.dark .field-row select,body.dark .portion-row input,body.dark .portion-row select,body.dark .search-wrap input,body.dark .manual-code-row input{background:var(--input-bg);color:var(--text);border-color:var(--border)}
+  body.dark .water-btn,body.dark .water-btn-reset{background:var(--card)}
+  body.dark #plate-preview-area{background:#050a04}
+  body.dark .barcode-area{background:#050a04}
+  body.dark select option{background:var(--card);color:var(--text)}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:430px;margin:0 auto;font-size:15px}
   .screen{display:none;flex-direction:column;min-height:100vh}
   .screen.active{display:flex}
-  .topbar{background:var(--green);color:#fff;padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between}
+  .topbar{background:var(--topbar-bg);color:#fff;padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between}
+  .profile-avatar{width:34px;height:34px;border-radius:50%;border:2px solid rgba(255,255,255,.4);object-fit:cover;cursor:pointer;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden}
+  .profile-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .profile-hero{display:flex;align-items:center;gap:14px;padding:16px;background:var(--card);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:12px}
+  .profile-hero-avatar{width:64px;height:64px;border-radius:50%;background:var(--green-light);border:3px solid var(--green-mid);display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;overflow:hidden;cursor:pointer;position:relative}
+  .profile-hero-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .profile-hero-avatar .avatar-edit{position:absolute;bottom:0;right:0;background:var(--green);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px}
+  .profile-name-edit{font-size:18px;font-weight:700;color:var(--text);border:none;background:transparent;outline:none;width:100%}
+  .profile-name-edit::placeholder{color:var(--muted)}
+  .dark-toggle{background:rgba(255,255,255,.15);border:none;border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;font-size:18px}
+  .edit-food-btn{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px}
+  /* Weekly chart */
+  .week-chart{display:flex;align-items:flex-end;gap:4px;height:60px;margin:10px 0 4px}
+  .week-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .week-bar-outer{width:100%;flex:1;background:var(--gray-50);border-radius:4px;display:flex;align-items:flex-end;overflow:hidden}
+  .week-bar-inner{width:100%;background:var(--green-mid);border-radius:4px;transition:height .4s}
+  .week-bar-label{font-size:9px;color:var(--muted);text-align:center}
+  /* Notif banner */
+  .notif-banner{background:var(--amber-light);border:1px solid var(--amber-mid);border-radius:10px;padding:12px 14px;margin-bottom:12px;display:none;align-items:center;gap:10px}
+  .notif-banner.show{display:flex}
+  .notif-banner-text{flex:1;font-size:13px;color:var(--amber)}
+  .notif-btn{background:var(--amber-mid);border:none;border-radius:8px;padding:6px 12px;color:#fff;font-size:12px;font-weight:600;cursor:pointer}
+  /* OFFood search loading */
+  .search-loading{text-align:center;padding:12px;color:var(--muted);font-size:13px}
+  /* Edit modal */
+  .edit-modal-food-name{font-size:16px;font-weight:600;margin-bottom:12px;color:var(--text)}
   .topbar-left{display:flex;flex-direction:column}
   .topbar-title{display:flex;align-items:center;gap:6px;font-size:18px;font-weight:700}
   .topbar-date{font-size:12px;opacity:.8;margin-top:2px}
@@ -185,11 +222,19 @@
       <div class="topbar-date" id="topbar-date"></div>
     </div>
     <div class="topbar-right">
+      <button class="dark-toggle" onclick="toggleDark()" id="dark-toggle-btn" title="Modo escuro">🌙</button>
       <button class="icon-btn" onclick="openModal('modal-add','cafe')" title="Adicionar alimento">➕</button>
+      <div class="profile-avatar" onclick="showScreen('profile')" id="topbar-avatar">👤</div>
     </div>
   </div>
 
   <div class="scroll-area">
+    <div class="notif-banner" id="notif-banner">
+      <span style="font-size:22px">🔔</span>
+      <span class="notif-banner-text" id="notif-banner-text">Ativar lembretes de refeição?</span>
+      <button class="notif-btn" onclick="requestNotifPermission()">Ativar</button>
+      <button style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px" onclick="dismissNotifBanner()">✕</button>
+    </div>
     <div class="summary-card">
       <div class="cal-row">
         <div class="cal-ring-wrap">
@@ -249,10 +294,10 @@
   </div>
 
   <div class="bottomnav">
-    <button class="bnav-item active" onclick="showScreen('diary')"><span class="nav-emoji">📖</span><span>Diário</span></button>
-    <button class="bnav-item" onclick="showScreen('history')"><span class="nav-emoji">📊</span><span>Histórico</span></button>
-    <button class="bnav-item" onclick="showScreen('scan')"><span class="nav-emoji">📷</span><span>Scanner</span></button>
-    <button class="bnav-item" onclick="showScreen('profile')"><span class="nav-emoji">👤</span><span>Perfil</span></button>
+    <button class="bnav-item active" onclick="showScreen('diary')" data-screen="diary"><span class="nav-emoji">📖</span><span>Diário</span></button>
+    <button class="bnav-item" onclick="showScreen('history')" data-screen="history"><span class="nav-emoji">📊</span><span>Histórico</span></button>
+    <button class="bnav-item" onclick="showScreen('scan')" data-screen="scan"><span class="nav-emoji">📷</span><span>Scanner</span></button>
+    <button class="bnav-item" onclick="showScreen('profile')" data-screen="profile"><span class="nav-emoji">👤</span><span>Perfil</span></button>
   </div>
 </div>
 
@@ -261,12 +306,19 @@
   <div class="topbar">
     <div class="topbar-left"><div class="topbar-title">📊 Histórico</div></div>
   </div>
-  <div class="scroll-area" id="history-list"></div>
+  <div class="scroll-area">
+    <div style="background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:14px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">📈 Últimos 7 dias</div>
+      <div class="week-chart" id="week-chart"></div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)" id="week-chart-labels"></div>
+    </div>
+    <div id="history-list"></div>
+  </div>
   <div class="bottomnav">
-    <button class="bnav-item" onclick="showScreen('diary')"><span class="nav-emoji">📖</span><span>Diário</span></button>
-    <button class="bnav-item active" onclick="showScreen('history')"><span class="nav-emoji">📊</span><span>Histórico</span></button>
-    <button class="bnav-item" onclick="showScreen('scan')"><span class="nav-emoji">📷</span><span>Scanner</span></button>
-    <button class="bnav-item" onclick="showScreen('profile')"><span class="nav-emoji">👤</span><span>Perfil</span></button>
+    <button class="bnav-item" onclick="showScreen('diary')" data-screen="diary"><span class="nav-emoji">📖</span><span>Diário</span></button>
+    <button class="bnav-item active" onclick="showScreen('history')" data-screen="history"><span class="nav-emoji">📊</span><span>Histórico</span></button>
+    <button class="bnav-item" onclick="showScreen('scan')" data-screen="scan"><span class="nav-emoji">📷</span><span>Scanner</span></button>
+    <button class="bnav-item" onclick="showScreen('profile')" data-screen="profile"><span class="nav-emoji">👤</span><span>Perfil</span></button>
   </div>
 </div>
 
@@ -330,10 +382,10 @@
   </div>
 
   <div class="bottomnav">
-    <button class="bnav-item" onclick="showScreen('diary')"><span class="nav-emoji">📖</span><span>Diário</span></button>
-    <button class="bnav-item" onclick="showScreen('history')"><span class="nav-emoji">📊</span><span>Histórico</span></button>
-    <button class="bnav-item active" onclick="showScreen('scan')"><span class="nav-emoji">📷</span><span>Scanner</span></button>
-    <button class="bnav-item" onclick="showScreen('profile')"><span class="nav-emoji">👤</span><span>Perfil</span></button>
+    <button class="bnav-item" onclick="showScreen('diary')" data-screen="diary"><span class="nav-emoji">📖</span><span>Diário</span></button>
+    <button class="bnav-item" onclick="showScreen('history')" data-screen="history"><span class="nav-emoji">📊</span><span>Histórico</span></button>
+    <button class="bnav-item active" onclick="showScreen('scan')" data-screen="scan"><span class="nav-emoji">📷</span><span>Scanner</span></button>
+    <button class="bnav-item" onclick="showScreen('profile')" data-screen="profile"><span class="nav-emoji">👤</span><span>Perfil</span></button>
   </div>
 </div>
 
@@ -341,8 +393,22 @@
 <div class="screen profile-screen" id="screen-profile">
   <div class="topbar">
     <div class="topbar-left"><div class="topbar-title">👤 Perfil &amp; Metas</div></div>
+    <div class="topbar-right"><button class="dark-toggle" onclick="toggleDark()" title="Modo escuro" id="dark-toggle-btn2">🌙</button></div>
   </div>
   <div class="scroll-area">
+    <!-- Profile hero -->
+    <div class="profile-hero">
+      <div class="profile-hero-avatar" onclick="document.getElementById('avatar-file').click()">
+        <span id="profile-hero-emoji">👤</span>
+        <img id="profile-hero-img" style="display:none">
+        <span class="avatar-edit">✏️</span>
+      </div>
+      <input type="file" id="avatar-file" accept="image/*" style="display:none" onchange="handleAvatarChange(this)">
+      <div style="flex:1">
+        <input class="profile-name-edit" id="profile-name-input" type="text" placeholder="Seu nome aqui..." maxlength="30" oninput="saveProfileName(this.value)">
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Toque no avatar para trocar a foto</div>
+      </div>
+    </div>
     <div class="calc-card">
       <h3>🧮 Calculadora de necessidades</h3>
       <div class="fields-2col">
@@ -388,10 +454,10 @@
     <div style="height:16px"></div>
   </div>
   <div class="bottomnav">
-    <button class="bnav-item" onclick="showScreen('diary')"><span class="nav-emoji">📖</span><span>Diário</span></button>
-    <button class="bnav-item" onclick="showScreen('history')"><span class="nav-emoji">📊</span><span>Histórico</span></button>
-    <button class="bnav-item" onclick="showScreen('scan')"><span class="nav-emoji">📷</span><span>Scanner</span></button>
-    <button class="bnav-item active" onclick="showScreen('profile')"><span class="nav-emoji">👤</span><span>Perfil</span></button>
+    <button class="bnav-item" onclick="showScreen('diary')" data-screen="diary"><span class="nav-emoji">📖</span><span>Diário</span></button>
+    <button class="bnav-item" onclick="showScreen('history')" data-screen="history"><span class="nav-emoji">📊</span><span>Histórico</span></button>
+    <button class="bnav-item" onclick="showScreen('scan')" data-screen="scan"><span class="nav-emoji">📷</span><span>Scanner</span></button>
+    <button class="bnav-item active" onclick="showScreen('profile')" data-screen="profile"><span class="nav-emoji">👤</span><span>Perfil</span></button>
   </div>
 </div>
 
@@ -446,9 +512,52 @@
   </div>
 </div>
 
+<!-- MODAL EDITAR ITEM -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">✏️ Editar porção</span>
+      <button class="modal-close" onclick="closeModal('modal-edit')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="edit-modal-food-name" id="edit-food-name"></div>
+      <div class="portion-macros" id="edit-macros-display" style="margin-bottom:16px"></div>
+      <div class="portion-row">
+        <label>Quantidade</label>
+        <input type="number" id="edit-qty" value="100" min="1" max="2000" oninput="updateEditMacros()">
+      </div>
+      <div class="portion-row">
+        <label>Unidade</label>
+        <select id="edit-unit" onchange="updateEditMacros()">
+          <option value="g">gramas (g)</option>
+          <option value="ml">mililitros (ml)</option>
+          <option value="un">unidade</option>
+          <option value="col_sopa">col. de sopa (~15g)</option>
+          <option value="col_cha">col. de chá (~5g)</option>
+          <option value="xicara">xícara (~240ml)</option>
+        </select>
+      </div>
+      <button class="add-confirm-btn" onclick="confirmEditFood()">✅ Salvar alteração</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.18.6/umd/index.min.js"></script>
 <script>
-const state = {
+// ===== PERSISTÊNCIA: localStorage helpers =====
+const LS = {
+  get(k, def=null){ try{ const v=localStorage.getItem(k); return v!==null?JSON.parse(v):def; }catch(e){return def;} },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} },
+  remove(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+
+// ===== CHAVE DO DIA =====
+function todayKey(){ const d=new Date(); return `day_${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}`; }
+function dateKey(date){ return `day_${date.getFullYear()}_${date.getMonth()+1}_${date.getDate()}`; }
+
+// ===== ESTADO PRINCIPAL =====
+const defaultState = {
   calGoal:2000,protGoal:150,carbGoal:250,fatGoal:65,waterGoal:2500,waterConsumed:0,
   meals:{
     cafe:{name:'Café da manhã',emoji:'☕',color:'#FAEEDA',items:[]},
@@ -459,6 +568,48 @@ const state = {
   currentMeal:'cafe',selectedFood:null
 };
 
+// Carrega estado do dia atual
+function loadTodayState(){
+  const saved = LS.get(todayKey());
+  if(saved){
+    return {
+      ...defaultState,
+      calGoal: saved.calGoal ?? defaultState.calGoal,
+      protGoal: saved.protGoal ?? defaultState.protGoal,
+      carbGoal: saved.carbGoal ?? defaultState.carbGoal,
+      fatGoal: saved.fatGoal ?? defaultState.fatGoal,
+      waterGoal: saved.waterGoal ?? defaultState.waterGoal,
+      waterConsumed: saved.waterConsumed ?? 0,
+      meals: saved.meals ?? defaultState.meals,
+      currentMeal: 'cafe',
+      selectedFood: null
+    };
+  }
+  // Herda metas do dia anterior se existir
+  const goals = LS.get('goals');
+  if(goals){
+    return {...defaultState, calGoal:goals.calGoal, protGoal:goals.protGoal, carbGoal:goals.carbGoal, fatGoal:goals.fatGoal, waterGoal:goals.waterGoal};
+  }
+  return JSON.parse(JSON.stringify(defaultState));
+}
+
+const state = loadTodayState();
+
+function saveState(){
+  const toSave = {
+    calGoal:state.calGoal,protGoal:state.protGoal,carbGoal:state.carbGoal,
+    fatGoal:state.fatGoal,waterGoal:state.waterGoal,waterConsumed:state.waterConsumed,
+    meals:state.meals
+  };
+  LS.set(todayKey(), toSave);
+  LS.set('goals',{calGoal:state.calGoal,protGoal:state.protGoal,carbGoal:state.carbGoal,fatGoal:state.fatGoal,waterGoal:state.waterGoal});
+  // Salva também no índice de dias
+  const days = LS.get('history_days', []);
+  const today = todayKey();
+  if(!days.includes(today)){ days.unshift(today); if(days.length>90) days.pop(); LS.set('history_days',days); }
+}
+
+// ===== BANCO DE ALIMENTOS =====
 const foodDB=[
   {id:1,name:'Arroz branco cozido',brand:'Genérico',cal:128,prot:2.5,carb:28,fat:0.2,per:100},
   {id:2,name:'Feijão carioca cozido',brand:'Genérico',cal:76,prot:4.8,carb:13.6,fat:0.5,per:100},
@@ -508,21 +659,103 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 function showScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll(`.bnav-item[data-screen="${name}"]`).forEach(b=>b.classList.add('active'));
   if(name==='history') renderHistory();
 }
 
-let codeReader=null;
-function stopCameraAndGoBack(){
-  if(codeReader){try{codeReader.reset();}catch(e){}codeReader=null;}
-  const video=document.getElementById('barcode-video');
-  video.style.display='none';
-  document.getElementById('scan-frame').style.display='none';
-  document.getElementById('cam-placeholder').style.display='block';
-  document.getElementById('cam-btn').textContent='📷 Ativar câmera';
-  document.getElementById('barcode-result').innerHTML='';
-  document.getElementById('manual-barcode').value='';
-  showScreen('diary');
+// ===== MODO ESCURO =====
+function toggleDark(){
+  const isDark = document.body.classList.toggle('dark');
+  LS.set('dark_mode', isDark);
+  document.getElementById('dark-toggle-btn').textContent = isDark ? '☀️' : '🌙';
+  document.getElementById('dark-toggle-btn2').textContent = isDark ? '☀️' : '🌙';
 }
+function initDark(){
+  const isDark = LS.get('dark_mode', false);
+  if(isDark){ document.body.classList.add('dark'); document.getElementById('dark-toggle-btn').textContent='☀️'; document.getElementById('dark-toggle-btn2').textContent='☀️'; }
+}
+
+// ===== PERFIL: NOME E AVATAR =====
+function loadProfile(){
+  const name = LS.get('profile_name','');
+  if(name) document.getElementById('profile-name-input').value = name;
+  const avatarUrl = LS.get('profile_avatar_url','');
+  if(avatarUrl){ updateAvatarUI(avatarUrl); }
+  updateTopbarAvatar();
+}
+function saveProfileName(name){
+  LS.set('profile_name', name);
+  updateTopbarAvatar();
+}
+function handleAvatarChange(input){
+  if(!input.files||!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    LS.set('profile_avatar_url', e.target.result);
+    updateAvatarUI(e.target.result);
+    updateTopbarAvatar();
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+function updateAvatarUI(url){
+  const img = document.getElementById('profile-hero-img');
+  const emoji = document.getElementById('profile-hero-emoji');
+  img.src = url; img.style.display='block'; emoji.style.display='none';
+}
+function updateTopbarAvatar(){
+  const el = document.getElementById('topbar-avatar');
+  const url = LS.get('profile_avatar_url','');
+  const name = LS.get('profile_name','');
+  if(url){ el.innerHTML=`<img src="${url}" style="width:34px;height:34px;border-radius:50%;object-fit:cover">`; }
+  else if(name){ el.textContent=name.charAt(0).toUpperCase(); el.style.fontSize='16px'; el.style.fontWeight='700'; }
+  else{ el.textContent='👤'; }
+}
+
+// ===== NOTIFICAÇÕES =====
+let notifDismissed = LS.get('notif_dismissed', false);
+let notifGranted = false;
+
+function checkNotifBanner(){
+  if(notifDismissed) return;
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'granted'){ notifGranted=true; scheduleReminders(); return; }
+  if(Notification.permission === 'denied') return;
+  document.getElementById('notif-banner').classList.add('show');
+}
+function dismissNotifBanner(){
+  document.getElementById('notif-banner').classList.remove('show');
+  LS.set('notif_dismissed', true);
+  notifDismissed = true;
+}
+function requestNotifPermission(){
+  Notification.requestPermission().then(perm=>{
+    if(perm==='granted'){ notifGranted=true; scheduleReminders(); showToast('🔔 Lembretes ativados!'); }
+    dismissNotifBanner();
+  });
+}
+function scheduleReminders(){
+  if(!notifGranted) return;
+  const reminders = [{hour:8,min:0,meal:'café da manhã'},{hour:13,min:0,meal:'almoço'},{hour:19,min:0,meal:'jantar'}];
+  reminders.forEach(r=>{
+    const now=new Date(), target=new Date();
+    target.setHours(r.hour,r.min,0,0);
+    if(target<=now) target.setDate(target.getDate()+1);
+    const delay=target-now;
+    setTimeout(()=>{
+      const td=dayTotal();
+      if(td.cal<50){ new Notification('🍽️ NutriCount',{body:`Você ainda não registrou o ${r.meal} hoje!`,icon:'icon-192.png'}); }
+      // Reagendar para o próximo dia
+      setInterval(()=>{
+        const td=dayTotal();
+        if(td.cal<50) new Notification('🍽️ NutriCount',{body:`Você ainda não registrou o ${r.meal} hoje!`,icon:'icon-192.png'});
+      }, 24*60*60*1000);
+    }, delay);
+  });
+}
+
+// ===== REFEIÇÕES =====
+let codeReader=null;
 
 function renderMeals(){
   const c=document.getElementById('meals-container');
@@ -544,17 +777,19 @@ function renderMeals(){
       </div>
       ${meal.items.length?`<div class="meal-items">${meal.items.map((item,i)=>`
         <div class="food-row">
-          <div style="flex:1">
+          <div style="flex:1" onclick="openEditModal('${key}',${i})" style="cursor:pointer">
             <div class="food-name">${item.name}</div>
             <div class="food-sub">${Math.round(item.qty)}${item.qtyUnit||'g'} &bull; P:${Math.round(item.prot)}g C:${Math.round(item.carb)}g G:${Math.round(item.fat)}g</div>
           </div>
           <div class="food-kcal">${Math.round(item.cal)} kcal</div>
+          <button class="edit-food-btn" onclick="openEditModal('${key}',${i})">✏️</button>
           <button class="food-del" onclick="removeFood('${key}',${i})">🗑️</button>
         </div>`).join('')}</div>`:''}
     `;
     c.appendChild(div);
   });
   updateSummary();
+  saveState();
 }
 
 function mealTotal(key){return state.meals[key].items.reduce((a,i)=>({cal:a.cal+i.cal,prot:a.prot+i.prot,carb:a.carb+i.carb,fat:a.fat+i.fat}),{cal:0,prot:0,carb:0,fat:0})}
@@ -579,14 +814,62 @@ function updateSummary(){
 
 function removeFood(mealKey,idx){state.meals[mealKey].items.splice(idx,1);renderMeals()}
 
+// ===== EDITAR ITEM =====
+let editContext = null;
+function openEditModal(mealKey, idx){
+  const item = state.meals[mealKey].items[idx];
+  editContext = {mealKey, idx, originalItem: item};
+  document.getElementById('edit-food-name').textContent = item.name;
+  document.getElementById('edit-qty').value = item.qty || 100;
+  document.getElementById('edit-unit').value = item.qtyUnit || 'g';
+  updateEditMacros();
+  openModal('modal-edit');
+}
+function updateEditMacros(){
+  if(!editContext) return;
+  const item = editContext.originalItem;
+  // Recalculate based on original per-100g if possible, or scale from stored values
+  const origQty = item.qty || 100;
+  const newQty = parseFloat(document.getElementById('edit-qty').value)||origQty;
+  const factor = newQty / origQty;
+  const cal=item.cal*factor, prot=item.prot*factor, carb=item.carb*factor, fat=item.fat*factor;
+  document.getElementById('edit-macros-display').innerHTML=`
+    <div class="pm-item"><div class="pm-val pm-cal">${Math.round(cal)}</div><div class="pm-lbl">kcal</div></div>
+    <div class="pm-item"><div class="pm-val pm-prot">${Math.round(prot)}g</div><div class="pm-lbl">Proteína</div></div>
+    <div class="pm-item"><div class="pm-val pm-carb">${Math.round(carb)}g</div><div class="pm-lbl">Carb</div></div>
+    <div class="pm-item"><div class="pm-val pm-fat">${Math.round(fat)}g</div><div class="pm-lbl">Gordura</div></div>`;
+}
+function confirmEditFood(){
+  if(!editContext) return;
+  const {mealKey, idx, originalItem} = editContext;
+  const origQty = originalItem.qty || 100;
+  const newQty = parseFloat(document.getElementById('edit-qty').value)||origQty;
+  const newUnit = document.getElementById('edit-unit').value;
+  const factor = newQty / origQty;
+  state.meals[mealKey].items[idx] = {
+    ...originalItem,
+    qty: newQty,
+    qtyUnit: newUnit,
+    cal: originalItem.cal * factor,
+    prot: originalItem.prot * factor,
+    carb: originalItem.carb * factor,
+    fat: originalItem.fat * factor
+  };
+  closeModal('modal-edit');
+  renderMeals();
+  showToast('✅ Porção atualizada!');
+}
+
+// ===== ÁGUA =====
 function updateWaterUI(){
   document.getElementById('water-consumed').textContent=state.waterConsumed;
   document.getElementById('water-goal').textContent=state.waterGoal;
   document.getElementById('water-bar').style.width=Math.min(100,state.waterConsumed/state.waterGoal*100)+'%';
 }
-function addWater(ml){state.waterConsumed+=ml;updateWaterUI();showToast(`💧 +${ml}ml adicionados`)}
-function resetWater(){if(!confirm('Zerar o consumo de água de hoje?'))return;state.waterConsumed=0;updateWaterUI();showToast('💧 Água zerada')}
+function addWater(ml){state.waterConsumed+=ml;updateWaterUI();saveState();showToast(`💧 +${ml}ml adicionados`)}
+function resetWater(){if(!confirm('Zerar o consumo de água de hoje?'))return;state.waterConsumed=0;updateWaterUI();saveState();showToast('💧 Água zerada')}
 
+// ===== MODALS =====
 function openModal(id,mealKey){
   if(mealKey) state.currentMeal=mealKey;
   document.getElementById(id).classList.add('open');
@@ -599,15 +882,41 @@ function openModal(id,mealKey){
 function closeModal(id){document.getElementById(id).classList.remove('open')}
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
 
+// ===== BUSCA COM OPEN FOOD FACTS FALLBACK =====
+let searchDebounce = null;
+let offResults = [];
+let offResultsMap = {};
+let currentSearchQuery = '';
+let _offCounter = 0;
+
 function filterFoods(q){
-  const list=document.getElementById('food-list-modal');
-  const lower=q.toLowerCase();
-  const filtered=q?foodDB.filter(f=>f.name.toLowerCase().includes(lower)||f.brand.toLowerCase().includes(lower)):foodDB;
-  if(!filtered.length){list.innerHTML='<div class="empty-state"><span class="em">🤷</span>Nenhum alimento encontrado</div>';return;}
-  list.innerHTML=filtered.slice(0,30).map(f=>`
-    <div class="food-list-item" onclick="selectFood(${f.id})">
+  clearTimeout(searchDebounce);
+  currentSearchQuery = q;
+  const list = document.getElementById('food-list-modal');
+  const lower = q.toLowerCase().trim();
+  const local = q ? foodDB.filter(f=>f.name.toLowerCase().includes(lower)||f.brand.toLowerCase().includes(lower)) : foodDB;
+
+  renderFoodList(local, []);
+
+  if(q.length >= 2){
+    document.getElementById('food-list-modal').innerHTML +=
+      `<div class="search-loading" id="off-loading">🌐 Buscando online...</div>`;
+    searchDebounce = setTimeout(()=>searchOpenFoodFacts(q, local), 400);
+  }
+}
+
+function renderFoodList(localItems, extraItems){
+  const list = document.getElementById('food-list-modal');
+  if(!list) return;
+  const all = [...localItems, ...extraItems];
+  if(!all.length){
+    list.innerHTML='<div class="empty-state"><span class="em">🤷</span>Nenhum alimento encontrado</div>';
+    return;
+  }
+  list.innerHTML = all.slice(0,30).map(f=>`
+    <div class="food-list-item" onclick="selectFoodFromList(${f._off ? `'off','${f._offKey}'` : `${f.id},-1`})">
       <div class="fli-info">
-        <div class="fli-name">${f.name}</div>
+        <div class="fli-name">${f.name}${f._off?` <span style="font-size:10px;color:var(--blue);background:var(--blue-light);padding:1px 5px;border-radius:4px">web</span>`:''}</div>
         <div class="fli-macros">${f.brand} &bull; P:${f.prot}g C:${f.carb}g G:${f.fat}g por ${f.per}${f.unit||'g'}</div>
       </div>
       <div class="fli-kcal">${f.cal} kcal</div>
@@ -615,7 +924,64 @@ function filterFoods(q){
     </div>`).join('');
 }
 
+async function searchOpenFoodFacts(q, localItems){
+  if(q !== currentSearchQuery) return;
+
+  const loading = document.getElementById('off-loading');
+
+  try{
+    const resp = await fetch(`https://api.calorieninjas.com/v1/nutrition?query=${encodeURIComponent(q)}`, {
+      headers: { 'X-Api-Key': 'JByz5h9bZR1XeHIDW6Xns9qL02lrIuU8VEXg1Wif' }
+    });
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const data = await resp.json();
+    if(q !== currentSearchQuery) return;
+
+    offResultsMap = {};
+    offResults = (data.items||[]).map(p=>{
+      const key = 'off_'+(_offCounter++);
+      const food = {
+        id:key, _off:true, _offKey:key,
+        name: p.name||'Produto',
+        brand: 'CalorieNinjas',
+        cal: Math.round(p.calories||0),
+        prot: Math.round((p.protein_g||0)*10)/10,
+        carb: Math.round((p.carbohydrates_total_g||0)*10)/10,
+        fat:  Math.round((p.fat_total_g||0)*10)/10,
+        per:  Math.round(p.serving_size_g||100),
+        unit: 'g'
+      };
+      offResultsMap[key] = food;
+      return food;
+    });
+
+    if(loading) loading.remove();
+    renderFoodList(localItems, offResults);
+  } catch(err){
+    if(q !== currentSearchQuery) return;
+    if(loading) loading.remove();
+    const list = document.getElementById('food-list-modal');
+    if(list){
+      renderFoodList(localItems, []);
+      if(!localItems.length){
+        list.innerHTML += `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted)">⚠️ Busca online indisponível (${err.message})</div>`;
+      }
+    }
+  }
+}
+
+function selectFoodFromList(idOrType, offKey){
+  let food;
+  if(idOrType === 'off'){ food = offResultsMap[offKey]; }
+  else { food = foodDB.find(f=>f.id===idOrType); }
+  if(!food) return;
+  state.selectedFood = food;
+  closeModal('modal-add');
+  openPortionModal(food);
+}
+
 function selectFood(id){state.selectedFood=foodDB.find(f=>f.id===id);closeModal('modal-add');openPortionModal(state.selectedFood)}
+
 function openPortionModal(food){
   document.getElementById('portion-name').textContent=food.name;
   document.getElementById('portion-brand').textContent=food.brand+' · por '+food.per+(food.unit||'g');
@@ -647,9 +1013,31 @@ function confirmAddFood(){
   closeModal('modal-portion');renderMeals();showToast('✅ '+food.name+' adicionado!');
 }
 
+// ===== CÂMERA =====
+function stopCameraAndGoBack(){
+  stopCamera();
+  document.getElementById('barcode-result').innerHTML='';
+  document.getElementById('manual-barcode').value='';
+  showScreen('diary');
+}
+
+function stopCamera(){
+  if(codeReader){try{codeReader.reset();}catch(e){} codeReader=null;}
+  const video=document.getElementById('barcode-video');
+  if(video.srcObject){video.srcObject.getTracks().forEach(t=>t.stop());video.srcObject=null;}
+  video.style.display='none';
+  document.getElementById('scan-frame').style.display='none';
+  document.getElementById('cam-placeholder').style.display='block';
+  const btn=document.getElementById('cam-btn');
+  btn.textContent='📷 Ativar câmera';
+  btn.dataset.active='0';
+}
+
 function startCamera(){
   const btn=document.getElementById('cam-btn');
+  if(btn.dataset.active==='1'){stopCamera();return;}
   btn.textContent='⏳ Iniciando câmera...';
+  btn.dataset.active='0';
   if(!window.ZXing){showToast('Biblioteca não carregada');btn.textContent='📷 Ativar câmera';return;}
   if(codeReader){try{codeReader.reset();}catch(e){}}
   codeReader=new ZXing.BrowserBarcodeReader();
@@ -658,15 +1046,16 @@ function startCamera(){
     if(result){
       const code=result.getText();
       document.getElementById('manual-barcode').value=code;
-      try{codeReader.reset();}catch(e){}
+      stopCamera();
       searchBarcode(code);
     }
   }).then(()=>{
     video.style.display='block';
     document.getElementById('scan-frame').style.display='block';
     document.getElementById('cam-placeholder').style.display='none';
-    btn.textContent='📷 Câmera ativa';
-  }).catch(()=>{showToast('❌ Permissão de câmera negada');btn.textContent='📷 Ativar câmera'});
+    btn.textContent='🔴 Fechar câmera';
+    btn.dataset.active='1';
+  }).catch(()=>{showToast('❌ Permissão de câmera negada');btn.textContent='📷 Ativar câmera';btn.dataset.active='0'});
 }
 
 function showBarcodeResult(food, bc, resultDiv){
@@ -695,39 +1084,29 @@ async function searchBarcode(code){
   const bc=code||input.value.trim();
   if(!bc){showToast('Insira um código');return;}
   const resultDiv=document.getElementById('barcode-result');
-
-  // 1. Look in local DB first
   const local=foodDB.find(f=>f.barcode===bc);
-  if(local){
-    showBarcodeResult({name:local.name,brand:local.brand,cal:local.cal,prot:local.prot,carb:local.carb,fat:local.fat}, bc, resultDiv);
-    return;
-  }
-
-  // 2. Try Open Food Facts API
+  if(local){showBarcodeResult({name:local.name,brand:local.brand,cal:local.cal,prot:local.prot,carb:local.carb,fat:local.fat},bc,resultDiv);return;}
   resultDiv.innerHTML=`<div class="empty-state"><span class="em">🔎</span>Buscando produto online...</div>`;
-  try {
-    const resp = await fetch(`https://world.openfoodfacts.org/api/v0/product/${bc}.json`);
-    const data = await resp.json();
-    if(data.status===1 && data.product){
-      const p=data.product;
-      const n=p.nutriments||{};
-      const per=n['energy-kcal_serving'] ? 'serving' : '100g';
-      const suffix = per==='serving' ? '_serving' : '_100g';
+  try{
+    const resp=await fetch(`https://world.openfoodfacts.org/api/v0/product/${bc}.json`);
+    const data=await resp.json();
+    if(data.status===1&&data.product){
+      const p=data.product;const n=p.nutriments||{};
+      const per=n['energy-kcal_serving']?'serving':'100g';
+      const suffix=per==='serving'?'_serving':'_100g';
       const cal=n['energy-kcal'+suffix]||n['energy-kcal']||0;
       const prot=n['proteins'+suffix]||n['proteins']||0;
       const carb=n['carbohydrates'+suffix]||n['carbohydrates']||0;
       const fat=n['fat'+suffix]||n['fat']||0;
       const name=p.product_name_pt||p.product_name||p.abbreviated_product_name||'Produto';
       const brand=p.brands||'Open Food Facts';
-      showBarcodeResult({name,brand,cal,prot,carb,fat}, bc, resultDiv);
-      return;
+      showBarcodeResult({name,brand,cal,prot,carb,fat},bc,resultDiv);return;
     }
-  } catch(e){}
-
-  // 3. Not found anywhere
+  }catch(e){}
   resultDiv.innerHTML=`<div class="empty-state"><span class="em">🔍</span>Código <b>${bc}</b> não encontrado.<br><br><small>Produto não está na base local nem no Open Food Facts.</small></div>`;
 }
 
+// ===== CALCULADORA =====
 function calcNeeds(){
   const age=parseFloat(document.getElementById('p-age').value);
   const weight=parseFloat(document.getElementById('p-weight').value);
@@ -758,37 +1137,76 @@ function applyGoals(){
   updateWaterUI();renderMeals();showToast('✅ Metas aplicadas!');showScreen('diary');
 }
 
+// ===== HISTÓRICO REAL =====
+function getLast30Days(){
+  const days = [];
+  for(let i=0;i<30;i++){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const key = dateKey(d);
+    const saved = LS.get(key);
+    if(saved || i===0){
+      const meals = saved ? saved.meals : state.meals;
+      const goal = saved ? (saved.calGoal||state.calGoal) : state.calGoal;
+      const total = Object.values(meals).reduce((acc,meal)=>{
+        (meal.items||[]).forEach(item=>{acc.cal+=item.cal||0;acc.prot+=item.prot||0;acc.carb+=item.carb||0;acc.fat+=item.fat||0;});
+        return acc;
+      },{cal:0,prot:0,carb:0,fat:0});
+      if(i===0 && !saved){ const td=dayTotal(); Object.assign(total,td); }
+      days.push({
+        key, date:d,
+        label: i===0?'Hoje': i===1?'Ontem': d.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'}),
+        cal: Math.round(total.cal), prot: Math.round(total.prot),
+        carb: Math.round(total.carb), fat: Math.round(total.fat), goal
+      });
+    }
+  }
+  return days;
+}
+
 function renderHistory(){
+  const days = getLast30Days();
   const list=document.getElementById('history-list');
-  const sample=[
-    {date:'Ontem',cal:1840,prot:132,carb:210,fat:58,goal:2000},
-    {date:'2 dias atrás',cal:2120,prot:145,carb:268,fat:71,goal:2000},
-    {date:'3 dias atrás',cal:1750,prot:128,carb:198,fat:52,goal:2000},
-    {date:'4 dias atrás',cal:1980,prot:140,carb:248,fat:64,goal:2000},
-    {date:'5 dias atrás',cal:2250,prot:155,carb:290,fat:78,goal:2000},
-  ];
-  const td=dayTotal();
-  const all=[{date:'Hoje',cal:Math.round(td.cal),prot:Math.round(td.prot),carb:Math.round(td.carb),fat:Math.round(td.fat),goal:state.calGoal},...sample];
-  list.innerHTML='<div style="padding-bottom:16px">'+all.map(d=>{
+
+  // Weekly chart (últimos 7 dias)
+  const last7 = days.slice(0,7).reverse();
+  const maxCal = Math.max(...last7.map(d=>d.cal), 1);
+  const chartEl = document.getElementById('week-chart');
+  const labelsEl = document.getElementById('week-chart-labels');
+  if(chartEl){
+    chartEl.innerHTML = last7.map(d=>{
+      const h = Math.max(4, Math.round((d.cal/maxCal)*100));
+      const ok = d.cal <= d.goal && d.cal > 0;
+      const color = d.cal===0 ? 'var(--gray-100)' : ok ? 'var(--green-mid)' : 'var(--red-mid)';
+      return `<div class="week-bar-wrap">
+        <div class="week-bar-outer"><div class="week-bar-inner" style="height:${h}%;background:${color}"></div></div>
+        <div class="week-bar-label">${d.cal>0?d.cal:'-'}</div>
+      </div>`;
+    }).join('');
+    labelsEl.innerHTML = last7.map(d=>`<span>${d.label.split(',')[0]}</span>`).join('');
+  }
+
+  const onlyWithData = days.filter(d=>d.cal>0);
+  if(!onlyWithData.length){ list.innerHTML='<div class="empty-state"><span class="em">📊</span>Nenhum dado registrado ainda.<br><small>Comece adicionando alimentos ao seu diário!</small></div>'; return; }
+
+  list.innerHTML='<div style="padding-bottom:16px">'+onlyWithData.map(d=>{
     const pct=Math.min(100,d.cal/d.goal*100);
     const ok=d.cal<=d.goal;
     return `<div class="hist-day">
       <div class="hist-day-header">
-        <span class="day-label">${d.date}</span>
-        <span class="day-kcal">${Math.round(d.cal)} / ${Math.round(d.goal)} kcal &nbsp;<span class="badge ${ok?'badge-green':'badge-red'}">${ok?'✅ na meta':'⚠️ acima'}</span></span>
+        <span class="day-label">${d.label}</span>
+        <span class="day-kcal">${d.cal} / ${d.goal} kcal &nbsp;<span class="badge ${ok?'badge-green':'badge-red'}">${ok?'✅ na meta':'⚠️ acima'}</span></span>
       </div>
       <div class="hist-bar"><div class="hist-bar-fill" style="width:${Math.round(pct)}%"></div></div>
       <div class="hist-macros-row">
-        <div class="hm">💪 <span>${Math.round(d.prot)}g</span></div>
-        <div class="hm">🌾 <span>${Math.round(d.carb)}g</span></div>
-        <div class="hm">🥑 <span>${Math.round(d.fat)}g</span></div>
+        <div class="hm">💪 <span>${d.prot}g</span></div>
+        <div class="hm">🌾 <span>${d.carb}g</span></div>
+        <div class="hm">🥑 <span>${d.fat}g</span></div>
       </div>
     </div>`;
   }).join('')+'</div>';
 }
 
-
-// ---- SCAN TABS ----
+// ===== SCAN TABS =====
 function switchScanTab(tab){
   const isBarcode = tab==='barcode';
   document.getElementById('scan-tab-barcode').style.display = isBarcode ? '' : 'none';
@@ -802,9 +1220,8 @@ function switchScanTab(tab){
   if(!isBarcode && codeReader){try{codeReader.reset();}catch(e){} codeReader=null;}
 }
 
-// ---- PLATE SCANNER ----
+// ===== PLATE SCANNER =====
 let plateImageBase64 = null;
-
 function openPlateCamera(){document.getElementById('plate-file-camera').click();}
 function openPlateGallery(){document.getElementById('plate-file-gallery').click();}
 
@@ -815,10 +1232,8 @@ function handlePlateImage(input){
   reader.onload=function(e){
     const dataUrl=e.target.result;
     const img=document.getElementById('plate-preview-img');
-    img.src=dataUrl;
-    img.style.display='block';
+    img.src=dataUrl; img.style.display='block';
     document.getElementById('plate-placeholder').style.display='none';
-    // Store base64 without prefix
     plateImageBase64=dataUrl.split(',')[1];
     document.getElementById('plate-analyze-btn').style.display='block';
     document.getElementById('plate-result').innerHTML='';
@@ -829,58 +1244,34 @@ function handlePlateImage(input){
 async function analyzePlate(){
   if(!plateImageBase64){showToast('Selecione uma foto primeiro');return;}
   const btn=document.getElementById('plate-analyze-btn');
-  btn.textContent='⏳ Analisando com IA...';
-  btn.disabled=true;
+  btn.textContent='⏳ Analisando com IA...'; btn.disabled=true;
   document.getElementById('plate-result').innerHTML='<div class="empty-state"><span class="em">🤖</span>A IA está identificando os alimentos do seu prato...</div>';
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:1000,
-        messages:[{
-          role:'user',
-          content:[
-            {type:'image',source:{type:'base64',media_type:'image/jpeg',data:plateImageBase64}},
-            {type:'text',text:`Você é um nutricionista especializado. Analise esta imagem de um prato de comida e estime os alimentos presentes e suas calorias/macros.
-
-Responda APENAS em JSON puro, sem markdown, sem backticks, no formato:
-{
-  "descricao": "descrição breve do prato",
-  "itens": [
-    {"nome": "Nome do alimento", "quantidade": "150g", "cal": 200, "prot": 15, "carb": 20, "fat": 5},
-    ...
-  ],
-  "total": {"cal": 500, "prot": 35, "carb": 45, "fat": 12}
-}
-
-Use estimativas realistas para porções típicas brasileiras. Seja específico nos nomes dos alimentos.`}
-          ]
-        }]
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',max_tokens:1000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:plateImageBase64}},
+          {type:'text',text:`Você é um nutricionista especializado. Analise esta imagem de um prato de comida e estime os alimentos presentes e suas calorias/macros.\n\nResponda APENAS em JSON puro, sem markdown, sem backticks, no formato:\n{\n  "descricao": "descrição breve do prato",\n  "itens": [\n    {"nome": "Nome do alimento", "quantidade": "150g", "cal": 200, "prot": 15, "carb": 20, "fat": 5},\n    ...\n  ],\n  "total": {"cal": 500, "prot": 35, "carb": 45, "fat": 12}\n}\n\nUse estimativas realistas para porções típicas brasileiras. Seja específico nos nomes dos alimentos.`}
+        ]}]
       })
     });
-
     const data=await resp.json();
     const text=data.content.map(i=>i.text||'').join('');
-    let result;
-    try { result=JSON.parse(text.replace(/```json|```/g,'').trim()); }
-    catch(e){ throw new Error('Resposta inválida da IA'); }
-
+    let result; try{result=JSON.parse(text.replace(/```json|```/g,'').trim());}catch(e){throw new Error('Resposta inválida da IA');}
     renderPlateResult(result);
-  } catch(err){
+  }catch(err){
     document.getElementById('plate-result').innerHTML=`<div class="empty-state"><span class="em">❌</span>Erro ao analisar: ${err.message}<br><small>Verifique sua conexão e tente novamente.</small></div>`;
   }
-  btn.textContent='✨ Analisar prato com IA';
-  btn.disabled=false;
+  btn.textContent='✨ Analisar prato com IA'; btn.disabled=false;
 }
 
 function renderPlateResult(result){
   const mealKey=document.getElementById('plate-meal-select').value;
   const mealName={'cafe':'Café da manhã','almoco':'Almoço','lanche':'Lanche','jantar':'Jantar'}[mealKey];
-
-  let itemsHTML=result.itens.map((item,i)=>`
+  let itemsHTML=result.itens.map(item=>`
     <div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:10px">
       <div style="flex:1">
         <div style="font-size:13px;font-weight:500">${item.nome}</div>
@@ -888,22 +1279,18 @@ function renderPlateResult(result){
       </div>
       <div style="font-size:13px;font-weight:600;color:var(--green-dark)">${item.cal} kcal</div>
     </div>`).join('');
-
   document.getElementById('plate-result').innerHTML=`
     <div style="background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:14px;margin-bottom:10px">
       <div style="font-size:14px;font-weight:600;margin-bottom:4px">🤖 ${result.descricao}</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Estimativa de IA — revise se necessário</div>
-
       <div class="portion-macros" style="margin-bottom:14px">
         <div class="pm-item"><div class="pm-val pm-cal">${result.total.cal}</div><div class="pm-lbl">kcal</div></div>
         <div class="pm-item"><div class="pm-val pm-prot">${result.total.prot}g</div><div class="pm-lbl">Proteína</div></div>
         <div class="pm-item"><div class="pm-val pm-carb">${result.total.carb}g</div><div class="pm-lbl">Carb</div></div>
         <div class="pm-item"><div class="pm-val pm-fat">${result.total.fat}g</div><div class="pm-lbl">Gordura</div></div>
       </div>
-
       <div style="margin-bottom:14px">${itemsHTML}</div>
-
-      <button onclick="addPlateToMeal(${JSON.stringify(result).replace(/"/g,'&quot;')})" 
+      <button onclick="addPlateToMeal(${JSON.stringify(result).replace(/"/g,'&quot;')})"
         style="width:100%;padding:13px;background:var(--green);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">
         ✅ Adicionar tudo ao ${mealName}
       </button>
@@ -913,25 +1300,25 @@ function renderPlateResult(result){
 function addPlateToMeal(result){
   const mealKey=document.getElementById('plate-meal-select').value;
   result.itens.forEach(item=>{
-    state.meals[mealKey].items.push({
-      name:item.nome,
-      qty:parseFloat(item.quantidade)||100,
-      qtyUnit:'g',
-      cal:item.cal,
-      prot:item.prot,
-      carb:item.carb,
-      fat:item.fat
-    });
+    state.meals[mealKey].items.push({name:item.nome,qty:parseFloat(item.quantidade)||100,qtyUnit:'g',cal:item.cal,prot:item.prot,carb:item.carb,fat:item.fat});
   });
-  renderMeals();
-  showToast(`✅ ${result.itens.length} itens adicionados!`);
-  showScreen('diary');
+  renderMeals(); showToast(`✅ ${result.itens.length} itens adicionados!`); showScreen('diary');
 }
 
+// ===== INIT =====
 document.getElementById('topbar-date').textContent=todayLabel();
+initDark();
+loadProfile();
 renderMeals();
 updateWaterUI();
+checkNotifBanner();
 
+// Auto-save a cada mudança de dia à meia-noite
+(function checkMidnight(){
+  const now=new Date(), next=new Date();
+  next.setDate(now.getDate()+1); next.setHours(0,0,10,0);
+  setTimeout(()=>{ saveState(); location.reload(); checkMidnight(); }, next-now);
+})();
 </script>
 </body>
 </html>
