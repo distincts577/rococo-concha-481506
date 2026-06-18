@@ -130,7 +130,7 @@
   .food-del{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px}
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:flex-end;justify-content:center}
   .modal-overlay.open{display:flex}
-  .modal-sheet{background:var(--card);border-radius:18px 18px 0 0;width:100%;max-width:430px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+  .modal-sheet{background:var(--card);border-radius:18px 18px 0 0;width:100%;max-width:430px;height:90vh;display:flex;flex-direction:column;overflow:hidden}
   .modal-handle{width:40px;height:4px;background:var(--border);border-radius:99px;margin:12px auto 4px}
   .modal-header{padding:8px 16px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
   .modal-title{font-size:16px;font-weight:600}
@@ -930,26 +930,40 @@ async function searchOpenFoodFacts(q, localItems){
   const loading = document.getElementById('off-loading');
 
   try{
-    const resp = await fetch(`https://api.calorieninjas.com/v1/nutrition?query=${encodeURIComponent(q)}`, {
-      headers: { 'X-Api-Key': 'JByz5h9bZR1XeHIDW6Xns9qL02lrIuU8VEXg1Wif' }
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body: JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:1000,
+        messages:[{role:'user',content:`Liste até 8 alimentos ou produtos que correspondam à busca: "${q}". Responda APENAS em JSON puro sem markdown no formato: {"products":[{"name":"Nome","brand":"Marca","cal":120,"prot":25,"carb":3,"fat":2,"per":30,"unit":"g"}]}. Use dados nutricionais reais por porção típica brasileira.`}]
+      })
     });
-    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    if(!resp.ok){const t=await resp.text();throw new Error('HTTP '+resp.status+': '+t.slice(0,100));}
     const data = await resp.json();
     if(q !== currentSearchQuery) return;
+    const text = data.content.map(i=>i.text||'').join('');
+    let result;
+    try{ result = JSON.parse(text.replace(/```json|```/g,'').trim()); }
+    catch(e){ throw new Error('JSON inválido: '+text.slice(0,80)); }
 
     offResultsMap = {};
-    offResults = (data.items||[]).map(p=>{
+    offResults = (result.products||[]).map(p=>{
       const key = 'off_'+(_offCounter++);
       const food = {
         id:key, _off:true, _offKey:key,
         name: p.name||'Produto',
-        brand: 'CalorieNinjas',
-        cal: Math.round(p.calories||0),
-        prot: Math.round((p.protein_g||0)*10)/10,
-        carb: Math.round((p.carbohydrates_total_g||0)*10)/10,
-        fat:  Math.round((p.fat_total_g||0)*10)/10,
-        per:  Math.round(p.serving_size_g||100),
-        unit: 'g'
+        brand: p.brand||'',
+        cal: Math.round(p.cal||0),
+        prot: Math.round((p.prot||0)*10)/10,
+        carb: Math.round((p.carb||0)*10)/10,
+        fat:  Math.round((p.fat||0)*10)/10,
+        per:  p.per||100,
+        unit: p.unit||'g'
       };
       offResultsMap[key] = food;
       return food;
@@ -963,9 +977,7 @@ async function searchOpenFoodFacts(q, localItems){
     const list = document.getElementById('food-list-modal');
     if(list){
       renderFoodList(localItems, []);
-      if(!localItems.length){
-        list.innerHTML += `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted)">⚠️ Busca online indisponível (${err.message})</div>`;
-      }
+      list.innerHTML += `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted)">⚠️ Busca online indisponível (${err.message})</div>`;
     }
   }
 }
