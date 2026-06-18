@@ -928,39 +928,29 @@ async function searchOpenFoodFacts(q, localItems){
   if(q !== currentSearchQuery) return;
   const loading = document.getElementById('off-loading');
   try{
-    const offUrl = 'https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=20&lc=pt&cc=br';
-    const proxyUrl = 'https://api.allorigins.win/get?url='+encodeURIComponent(offUrl);
-    const timeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),10000));
-    const resp = await Promise.race([fetch(proxyUrl), timeout]);
+    const resp = await fetch('/.netlify/functions/nutrition?q='+encodeURIComponent(q));
     if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const wrapper = await resp.json();
-    const data = JSON.parse(wrapper.contents);
+    const data = await resp.json();
     if(q !== currentSearchQuery) return;
-    const seen = new Set();
+
     offResultsMap = {};
-    offResults = (data.products||[]).filter(p=>{
-      const n = p.nutriments||{};
-      const name = p.product_name_pt||p.product_name||'';
-      const hasCal = n['energy-kcal_100g']||n['energy-kcal_serving']||n['energy-kcal'];
-      if(!name||!hasCal) return false;
-      const k = (name+(p.brands||'')).toLowerCase().replace(/\s/g,'');
-      if(seen.has(k)) return false;
-      seen.add(k); return true;
-    }).map(p=>{
-      const n = p.nutriments||{};
-      const cal100 = n['energy-kcal_100g'];
-      const calServ = n['energy-kcal_serving'];
-      const cal = cal100||calServ||n['energy-kcal']||0;
-      const suf = cal100 ? '_100g' : (calServ ? '_serving' : '');
-      const prot = n['proteins'+suf]||n['proteins']||0;
-      const carb = n['carbohydrates'+suf]||n['carbohydrates']||0;
-      const fat  = n['fat'+suf]||n['fat']||0;
-      const per  = cal100 ? 100 : (p.serving_size ? parseFloat(p.serving_size)||100 : 100);
+    offResults = (data.items||[]).map(p=>{
       const key = 'off_'+(_offCounter++);
-      const food = {id:key,_off:true,_offKey:key,name:p.product_name_pt||p.product_name||'Produto',brand:p.brands||'Open Food Facts',cal:Math.round(cal),prot:Math.round(prot*10)/10,carb:Math.round(carb*10)/10,fat:Math.round(fat*10)/10,per};
+      const food = {
+        id:key, _off:true, _offKey:key,
+        name: p.name||'Produto',
+        brand: 'CalorieNinjas',
+        cal: Math.round(p.calories||0),
+        prot: Math.round((p.protein_g||0)*10)/10,
+        carb: Math.round((p.carbohydrates_total_g||0)*10)/10,
+        fat:  Math.round((p.fat_total_g||0)*10)/10,
+        per:  Math.round(p.serving_size_g||100),
+        unit: 'g'
+      };
       offResultsMap[key] = food;
       return food;
     });
+
     if(loading) loading.remove();
     renderFoodList(localItems, offResults);
   } catch(err){
