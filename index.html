@@ -208,6 +208,32 @@
   .toast.show{opacity:1}
   .empty-state{text-align:center;padding:24px 0;color:var(--muted);font-size:13px}
   .empty-state .em{font-size:36px;display:block;margin-bottom:8px}
+  /* Streak card */
+  .streak-card{background:linear-gradient(135deg,#27500A,#3B6D11);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;color:#fff}
+  .streak-fire{font-size:40px;line-height:1;flex-shrink:0;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
+  .streak-info{flex:1}
+  .streak-count{font-size:28px;font-weight:800;line-height:1}
+  .streak-label{font-size:12px;opacity:.85;margin-top:2px}
+  .streak-msg{font-size:11px;opacity:.7;margin-top:4px}
+  .streak-best{background:rgba(255,255,255,.15);border-radius:8px;padding:6px 10px;text-align:center;flex-shrink:0}
+  .streak-best .sb-num{font-size:18px;font-weight:700}
+  .streak-best .sb-lbl{font-size:10px;opacity:.8}
+  /* Saved meals */
+  .saved-meal-row{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:10px;cursor:pointer}
+  .saved-meal-row:last-child{border-bottom:none}
+  .saved-meal-row:active{background:var(--gray-50)}
+  .sml-info{flex:1}
+  .sml-name{font-size:14px;font-weight:500}
+  .sml-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .sml-kcal{font-size:13px;font-weight:600;color:var(--green-dark)}
+  .sml-del{background:none;border:none;color:var(--muted);font-size:17px;cursor:pointer;padding:4px}
+  /* Favorites tag */
+  .fav-tag{font-size:10px;color:var(--amber);background:var(--amber-light);padding:1px 5px;border-radius:4px;margin-left:4px}
+  .fav-btn{background:none;border:none;font-size:20px;cursor:pointer;padding:2px 6px;opacity:.5;transition:opacity .2s}
+  .fav-btn.active{opacity:1}
+  /* Save meal modal */
+  .save-meal-input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;outline:none;margin-bottom:12px}
+  .save-meal-input:focus{border-color:var(--green-mid)}
 </style>
 </head>
 <body>
@@ -235,6 +261,20 @@
       <button class="notif-btn" onclick="requestNotifPermission()">Ativar</button>
       <button style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px" onclick="dismissNotifBanner()">✕</button>
     </div>
+    <!-- STREAK CARD -->
+    <div class="streak-card" id="streak-card">
+      <div class="streak-fire" id="streak-emoji">🔥</div>
+      <div class="streak-info">
+        <div class="streak-count" id="streak-count">0</div>
+        <div class="streak-label">dias consecutivos</div>
+        <div class="streak-msg" id="streak-msg">Registre hoje para começar uma sequência!</div>
+      </div>
+      <div class="streak-best">
+        <div class="sb-num" id="streak-best">0</div>
+        <div class="sb-lbl">recorde</div>
+      </div>
+    </div>
+
     <div class="summary-card">
       <div class="cal-row">
         <div class="cal-ring-wrap">
@@ -469,13 +509,48 @@
       <span class="modal-title" id="modal-add-title">➕ Adicionar alimento</span>
       <button class="modal-close" onclick="closeModal('modal-add')">✕</button>
     </div>
-    <div class="modal-body">
-      <button class="scan-btn" onclick="closeModal('modal-add');showScreen('scan')">📷 Escanear código de barras</button>
-      <div class="search-wrap">
-        <span class="search-icon-em">🔍</span>
-        <input type="text" id="food-search-input" placeholder="Buscar alimento..." oninput="filterFoods(this.value)">
+    <div class="modal-body" style="padding:0;display:flex;flex-direction:column;height:100%">
+      <!-- Tabs -->
+      <div style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0">
+        <button id="add-tab-busca" onclick="switchAddTab('busca')" style="flex:1;padding:11px 8px;border:none;background:none;font-size:12px;font-weight:600;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer">🔍 Buscar</button>
+        <button id="add-tab-salvos" onclick="switchAddTab('salvos')" style="flex:1;padding:11px 8px;border:none;background:none;font-size:12px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer">🍱 Refeições Salvas</button>
+        <button id="add-tab-favs" onclick="switchAddTab('favs')" style="flex:1;padding:11px 8px;border:none;background:none;font-size:12px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer">⭐ Favoritos</button>
       </div>
-      <div id="food-list-modal"></div>
+      <!-- Tab: Buscar -->
+      <div id="add-panel-busca" style="flex:1;overflow-y:auto;padding:14px">
+        <button class="scan-btn" onclick="closeModal('modal-add');showScreen('scan')">📷 Escanear código de barras</button>
+        <div class="search-wrap">
+          <span class="search-icon-em">🔍</span>
+          <input type="text" id="food-search-input" placeholder="Buscar alimento..." oninput="filterFoods(this.value)">
+        </div>
+        <div id="food-list-modal"></div>
+      </div>
+      <!-- Tab: Refeições Salvas -->
+      <div id="add-panel-salvos" style="display:none;flex:1;overflow-y:auto;padding:14px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Refeições que você salvou para adicionar com 1 clique</div>
+        <div id="saved-meals-list"></div>
+      </div>
+      <!-- Tab: Favoritos -->
+      <div id="add-panel-favs" style="display:none;flex:1;overflow-y:auto;padding:14px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Seus alimentos mais usados — toque para adicionar</div>
+        <div id="favs-list-modal"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SALVAR REFEIÇÃO -->
+<div class="modal-overlay" id="modal-save-meal">
+  <div class="modal-sheet" style="height:auto;max-height:70vh">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">🍱 Salvar Refeição</span>
+      <button class="modal-close" onclick="closeModal('modal-save-meal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px" id="save-meal-preview"></div>
+      <input type="text" class="save-meal-input" id="save-meal-name" placeholder="Nome da refeição (ex: Almoço padrão, Pré-treino)">
+      <button class="add-confirm-btn" onclick="confirmSaveMeal()">💾 Salvar refeição</button>
     </div>
   </div>
 </div>
@@ -596,6 +671,7 @@ function loadTodayState(){
 const state = loadTodayState();
 
 function saveState(){
+  if(typeof renderStreak==="function") setTimeout(renderStreak, 0);
   const toSave = {
     calGoal:state.calGoal,protGoal:state.protGoal,carbGoal:state.carbGoal,
     fatGoal:state.fatGoal,waterGoal:state.waterGoal,waterConsumed:state.waterConsumed,
@@ -773,7 +849,10 @@ function renderMeals(){
             <div class="meal-kcal">${Math.round(total.cal)} kcal &bull; P:${Math.round(total.prot)}g C:${Math.round(total.carb)}g G:${Math.round(total.fat)}g</div>
           </div>
         </div>
-        <button class="meal-add-btn" onclick="openModal('modal-add','${key}')">➕</button>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${meal.items.length?('<button class="meal-add-btn" style="background:var(--gray-50);width:30px;height:30px;font-size:16px" onclick="openSaveMealModal(\''+key+'\')" title="Salvar refeição">💾</button>'):''}
+          <button class="meal-add-btn" onclick="openModal('modal-add','${key}')">➕</button>
+        </div>
       </div>
       ${meal.items.length?`<div class="meal-items">${meal.items.map((item,i)=>`
         <div class="food-row">
@@ -1299,11 +1378,200 @@ function addPlateToMeal(result){
   renderMeals(); showToast(`✅ ${result.itens.length} itens adicionados!`); showScreen('diary');
 }
 
+
+// ===== STREAK =====
+function calcStreak(){
+  const today = todayKey();
+  let streak = 0;
+  let best = LS.get('streak_best', 0);
+  const d = new Date();
+  // Check if today has data
+  const todaySaved = LS.get(today);
+  const todayHasData = todaySaved ? Object.values(todaySaved.meals||{}).some(m=>(m.items||[]).length>0) : Object.values(state.meals).some(m=>m.items.length>0);
+  if(!todayHasData){
+    // streak starts from yesterday
+    d.setDate(d.getDate()-1);
+  }
+  for(let i=0;i<365;i++){
+    const key = dateKey(d);
+    const saved = i===0&&todayHasData ? (todaySaved||{meals:state.meals}) : LS.get(key);
+    if(!saved) break;
+    const hasData = Object.values(saved.meals||{}).some(m=>(m.items||[]).length>0);
+    if(!hasData) break;
+    streak++;
+    d.setDate(d.getDate()-1);
+  }
+  if(todayHasData && streak > best){ best = streak; LS.set('streak_best', best); }
+  return {streak, best, todayHasData};
+}
+
+function renderStreak(){
+  const {streak, best, todayHasData} = calcStreak();
+  document.getElementById('streak-count').textContent = streak;
+  document.getElementById('streak-best').textContent = best;
+  const msgs = [
+    'Registre hoje para começar uma sequência!',
+    '1 dia! O começo de algo grande 💪',
+    '2 dias seguidos! Tá ficando sério!',
+    '3 dias! Você formou um hábito embrionário 🌱',
+    '1 semana! Você é imparável! 🚀',
+  ];
+  let msg = streak===0 ? msgs[0] : streak===1 ? msgs[1] : streak===2 ? msgs[2] : streak>=3&&streak<7 ? msgs[3] : msgs[4];
+  if(streak>=7) msg = `${streak} dias! Você é uma lenda! 🏆`;
+  if(!todayHasData && streak>0) msg = `Sequência em risco! Registre hoje para manter os ${streak} dias 🔥`;
+  document.getElementById('streak-msg').textContent = msg;
+  const emoji = streak===0?'🌱':streak<3?'🔥':streak<7?'🔥':streak<14?'⚡':'🏆';
+  document.getElementById('streak-emoji').textContent = emoji;
+  // Dim card if today has no data
+  document.getElementById('streak-card').style.opacity = (!todayHasData && streak===0) ? '0.7' : '1';
+}
+
+// ===== MODAL TABS =====
+function switchAddTab(tab){
+  ['busca','salvos','favs'].forEach(t=>{
+    document.getElementById('add-panel-'+t).style.display = t===tab ? 'block' : 'none';
+    const btn = document.getElementById('add-tab-'+t);
+    if(t===tab){
+      btn.style.color='var(--green)'; btn.style.borderBottom='2px solid var(--green)';
+    } else {
+      btn.style.color='var(--muted)'; btn.style.borderBottom='2px solid transparent';
+    }
+  });
+  if(tab==='salvos') renderSavedMealsList();
+  if(tab==='favs') renderFavsList();
+}
+
+// ===== FAVORITOS =====
+function getFavs(){ return LS.get('fav_foods', []); }
+function isFav(foodId){ return getFavs().includes(String(foodId)); }
+function toggleFav(foodId){
+  let favs = getFavs();
+  const id = String(foodId);
+  if(favs.includes(id)){ favs = favs.filter(f=>f!==id); showToast('Removido dos favoritos'); }
+  else { if(favs.length>=10) favs.shift(); favs.push(id); showToast('⭐ Adicionado aos favoritos!'); }
+  LS.set('fav_foods', favs);
+  // Re-render list to update star state
+  const q = document.getElementById('food-search-input');
+  if(q) filterFoods(q.value);
+}
+function renderFavsList(){
+  const favs = getFavs();
+  const el = document.getElementById('favs-list-modal');
+  if(!favs.length){
+    el.innerHTML='<div class="empty-state"><span class="em">⭐</span>Nenhum favorito ainda.<br><small>Toque ⭐ ao lado de um alimento na busca para favoritar.</small></div>';
+    return;
+  }
+  const foods = favs.map(id=>foodDB.find(f=>String(f.id)===id)).filter(Boolean);
+  el.innerHTML = foods.map(f=>`
+    <div class="food-list-item" onclick="selectFoodFromList(${f.id},-1)">
+      <div class="fli-info">
+        <div class="fli-name">⭐ ${f.name}</div>
+        <div class="fli-macros">${f.brand} &bull; P:${f.prot}g C:${f.carb}g G:${f.fat}g por ${f.per}${f.unit||'g'}</div>
+      </div>
+      <div class="fli-kcal">${f.cal} kcal</div>
+      <div class="fli-arrow">›</div>
+    </div>`).join('');
+}
+
+// ===== REFEIÇÕES SALVAS =====
+function getSavedMeals(){ return LS.get('saved_meals', []); }
+
+let saveMealContext = null;
+function openSaveMealModal(mealKey){
+  const meal = state.meals[mealKey];
+  if(!meal.items.length){ showToast('⚠️ Refeição está vazia'); return; }
+  saveMealContext = mealKey;
+  const total = mealTotal(mealKey);
+  document.getElementById('save-meal-preview').innerHTML =
+    `<b>${meal.name}</b> · ${meal.items.length} itens · ${Math.round(total.cal)} kcal<br>` +
+    meal.items.map(i=>i.name).join(', ');
+  document.getElementById('save-meal-name').value = meal.name;
+  closeModal('modal-add');
+  document.getElementById('modal-save-meal').classList.add('open');
+}
+function confirmSaveMeal(){
+  if(!saveMealContext) return;
+  const name = document.getElementById('save-meal-name').value.trim();
+  if(!name){ showToast('⚠️ Dê um nome para a refeição'); return; }
+  const mealKey = saveMealContext;
+  const items = JSON.parse(JSON.stringify(state.meals[mealKey].items));
+  const total = mealTotal(mealKey);
+  const saved = getSavedMeals();
+  saved.unshift({ id: Date.now(), name, items, cal: Math.round(total.cal), prot: Math.round(total.prot), carb: Math.round(total.carb), fat: Math.round(total.fat) });
+  LS.set('saved_meals', saved);
+  closeModal('modal-save-meal');
+  showToast('💾 Refeição "'+name+'" salva!');
+}
+function renderSavedMealsList(){
+  const saved = getSavedMeals();
+  const el = document.getElementById('saved-meals-list');
+  if(!saved.length){
+    el.innerHTML='<div class="empty-state"><span class="em">🍱</span>Nenhuma refeição salva ainda.<br><small>Monte uma refeição no diário e toque 💾 para salvar.</small></div>';
+    return;
+  }
+  el.innerHTML = saved.map((m,i)=>`
+    <div class="saved-meal-row">
+      <div class="sml-info" onclick="loadSavedMeal(${i})">
+        <div class="sml-name">🍱 ${m.name}</div>
+        <div class="sml-sub">${m.items.length} itens · P:${m.prot}g C:${m.carb}g G:${m.fat}g</div>
+      </div>
+      <div class="sml-kcal" onclick="loadSavedMeal(${i})">${m.cal} kcal</div>
+      <div class="fli-arrow" onclick="loadSavedMeal(${i})" style="margin:0 4px">›</div>
+      <button class="sml-del" onclick="deleteSavedMeal(${i})">🗑️</button>
+    </div>`).join('');
+}
+function loadSavedMeal(idx){
+  const meal = getSavedMeals()[idx];
+  meal.items.forEach(item=>{
+    state.meals[state.currentMeal].items.push({...item});
+  });
+  closeModal('modal-add');
+  renderMeals();
+  renderStreak();
+  showToast('✅ '+meal.name+' adicionada!');
+}
+function deleteSavedMeal(idx){
+  if(!confirm('Remover esta refeição salva?')) return;
+  const saved = getSavedMeals();
+  saved.splice(idx,1);
+  LS.set('saved_meals', saved);
+  renderSavedMealsList();
+  showToast('🗑️ Refeição removida');
+}
+
+// ===== ADD FAV BUTTON TO FOOD LIST =====
+function renderFoodList(localItems, extraItems){
+  const list = document.getElementById('food-list-modal');
+  if(!list) return;
+  const all = [...localItems, ...extraItems];
+  if(!all.length){
+    list.innerHTML='<div class="empty-state"><span class="em">🤷</span>Nenhum alimento encontrado</div>';
+    return;
+  }
+  list.innerHTML = all.slice(0,30).map(function(f){
+    var clickArg = f._off ? ("'off','"+f._offKey+"'") : (f.id+",-1");
+    var webBadge = f._off ? ' <span style="font-size:10px;color:var(--blue);background:var(--blue-light);padding:1px 5px;border-radius:4px">web</span>' : '';
+    var favBtn = !f._off
+      ? '<button class="fav-btn '+(isFav(f.id)?'active':'')+'" onclick="toggleFav('+f.id+')" title="Favoritar">⭐</button>'
+      : '<div style="width:28px"></div>';
+    return '<div class="food-list-item" style="gap:6px">'
+      + '<div class="fli-info" onclick="selectFoodFromList('+clickArg+')">'
+      + '<div class="fli-name">'+f.name+webBadge+'</div>'
+      + '<div class="fli-macros">'+f.brand+' &bull; P:'+f.prot+'g C:'+f.carb+'g G:'+f.fat+'g por '+f.per+(f.unit||'g')+'</div>'
+      + '</div>'
+      + '<div class="fli-kcal" onclick="selectFoodFromList('+clickArg+')">'+f.cal+' kcal</div>'
+      + favBtn
+      + '<div class="fli-arrow" onclick="selectFoodFromList('+clickArg+')">›</div>'
+      + '</div>';
+  }).join('');
+}
+
 // ===== INIT =====
 document.getElementById('topbar-date').textContent=todayLabel();
 initDark();
 loadProfile();
 renderMeals();
+renderStreak();
 updateWaterUI();
 checkNotifBanner();
 
