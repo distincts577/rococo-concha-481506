@@ -926,49 +926,41 @@ function renderFoodList(localItems, extraItems){
 
 async function searchOpenFoodFacts(q, localItems){
   if(q !== currentSearchQuery) return;
-
   const loading = document.getElementById('off-loading');
-
   try{
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body: JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
-        max_tokens:1000,
-        messages:[{role:'user',content:`Liste até 8 alimentos ou produtos que correspondam à busca: "${q}". Responda APENAS em JSON puro sem markdown no formato: {"products":[{"name":"Nome","brand":"Marca","cal":120,"prot":25,"carb":3,"fat":2,"per":30,"unit":"g"}]}. Use dados nutricionais reais por porção típica brasileira.`}]
-      })
-    });
-    if(!resp.ok){const t=await resp.text();throw new Error('HTTP '+resp.status+': '+t.slice(0,100));}
-    const data = await resp.json();
+    const offUrl = 'https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=20&lc=pt&cc=br';
+    const proxyUrl = 'https://api.allorigins.win/get?url='+encodeURIComponent(offUrl);
+    const timeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),10000));
+    const resp = await Promise.race([fetch(proxyUrl), timeout]);
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const wrapper = await resp.json();
+    const data = JSON.parse(wrapper.contents);
     if(q !== currentSearchQuery) return;
-    const text = data.content.map(i=>i.text||'').join('');
-    let result;
-    try{ result = JSON.parse(text.replace(/```json|```/g,'').trim()); }
-    catch(e){ throw new Error('JSON inválido: '+text.slice(0,80)); }
-
+    const seen = new Set();
     offResultsMap = {};
-    offResults = (result.products||[]).map(p=>{
+    offResults = (data.products||[]).filter(p=>{
+      const n = p.nutriments||{};
+      const name = p.product_name_pt||p.product_name||'';
+      const hasCal = n['energy-kcal_100g']||n['energy-kcal_serving']||n['energy-kcal'];
+      if(!name||!hasCal) return false;
+      const k = (name+(p.brands||'')).toLowerCase().replace(/\s/g,'');
+      if(seen.has(k)) return false;
+      seen.add(k); return true;
+    }).map(p=>{
+      const n = p.nutriments||{};
+      const cal100 = n['energy-kcal_100g'];
+      const calServ = n['energy-kcal_serving'];
+      const cal = cal100||calServ||n['energy-kcal']||0;
+      const suf = cal100 ? '_100g' : (calServ ? '_serving' : '');
+      const prot = n['proteins'+suf]||n['proteins']||0;
+      const carb = n['carbohydrates'+suf]||n['carbohydrates']||0;
+      const fat  = n['fat'+suf]||n['fat']||0;
+      const per  = cal100 ? 100 : (p.serving_size ? parseFloat(p.serving_size)||100 : 100);
       const key = 'off_'+(_offCounter++);
-      const food = {
-        id:key, _off:true, _offKey:key,
-        name: p.name||'Produto',
-        brand: p.brand||'',
-        cal: Math.round(p.cal||0),
-        prot: Math.round((p.prot||0)*10)/10,
-        carb: Math.round((p.carb||0)*10)/10,
-        fat:  Math.round((p.fat||0)*10)/10,
-        per:  p.per||100,
-        unit: p.unit||'g'
-      };
+      const food = {id:key,_off:true,_offKey:key,name:p.product_name_pt||p.product_name||'Produto',brand:p.brands||'Open Food Facts',cal:Math.round(cal),prot:Math.round(prot*10)/10,carb:Math.round(carb*10)/10,fat:Math.round(fat*10)/10,per};
       offResultsMap[key] = food;
       return food;
     });
-
     if(loading) loading.remove();
     renderFoodList(localItems, offResults);
   } catch(err){
@@ -977,7 +969,7 @@ async function searchOpenFoodFacts(q, localItems){
     const list = document.getElementById('food-list-modal');
     if(list){
       renderFoodList(localItems, []);
-      list.innerHTML += `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted)">⚠️ Busca online indisponível (${err.message})</div>`;
+      list.innerHTML += '<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted)">\u26a0\ufe0f Busca online indispon\u00edvel ('+err.message+')</div>';
     }
   }
 }
