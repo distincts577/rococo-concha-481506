@@ -274,11 +274,16 @@
 <div class="screen" id="screen-scan">
   <div class="topbar">
     <div class="topbar-left"><div class="topbar-title">📷 Scanner</div></div>
-    <div class="topbar-right">
-      <button class="back-btn" onclick="stopCameraAndGoBack()">← Voltar</button>
-    </div>
   </div>
-  <div class="scroll-area">
+
+  <!-- Tabs -->
+  <div style="display:flex;background:#fff;border-bottom:1px solid var(--border)">
+    <button id="tab-barcode" onclick="switchScanTab('barcode')" style="flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer">🔲 Código de Barras</button>
+    <button id="tab-plate" onclick="switchScanTab('plate')" style="flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer">🍽️ Escanear Prato</button>
+  </div>
+
+  <!-- TAB: CÓDIGO DE BARRAS -->
+  <div id="scan-tab-barcode" class="scroll-area">
     <div class="barcode-area" id="barcode-area">
       <video id="barcode-video" class="barcode-video" playsinline autoplay muted style="display:none"></video>
       <div class="scan-frame" id="scan-frame" style="display:none"><div class="scan-line"></div></div>
@@ -292,9 +297,40 @@
       <button onclick="searchBarcode()">🔍</button>
     </div>
     <div id="barcode-result" style="margin-top:14px"></div>
+    <div style="height:16px"></div>
   </div>
+
+  <!-- TAB: SCANNER DE PRATO -->
+  <div id="scan-tab-plate" class="scroll-area" style="display:none">
+    <div style="background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:14px;margin-bottom:12px">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:10px">📸 Tire uma foto do seu prato ou escolha da galeria. A IA vai identificar os alimentos e estimar as calorias.</div>
+      <div id="plate-preview-area" style="background:#111;border-radius:12px;overflow:hidden;position:relative;margin-bottom:10px;min-height:180px;display:flex;align-items:center;justify-content:center">
+        <img id="plate-preview-img" style="display:none;width:100%;max-height:260px;object-fit:cover;border-radius:12px">
+        <div id="plate-placeholder" style="color:#666;font-size:13px;text-align:center;padding:20px">🍽️<br><br>Nenhuma foto selecionada</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button onclick="openPlateCamera()" style="flex:1;padding:11px;background:var(--green-light);border:1px solid var(--green-mid);border-radius:10px;color:var(--green-dark);font-size:13px;font-weight:500;cursor:pointer">📷 Câmera</button>
+        <button onclick="openPlateGallery()" style="flex:1;padding:11px;background:var(--gray-50);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-weight:500;cursor:pointer">🖼️ Galeria</button>
+      </div>
+      <input type="file" id="plate-file-camera" accept="image/*" capture="environment" style="display:none" onchange="handlePlateImage(this)">
+      <input type="file" id="plate-file-gallery" accept="image/*" style="display:none" onchange="handlePlateImage(this)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <label style="font-size:13px;color:var(--muted);white-space:nowrap">Adicionar em:</label>
+        <select id="plate-meal-select" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;outline:none">
+          <option value="cafe">☕ Café da manhã</option>
+          <option value="almoco" selected>🍽️ Almoço</option>
+          <option value="lanche">🍎 Lanche</option>
+          <option value="jantar">🌙 Jantar</option>
+        </select>
+      </div>
+      <button id="plate-analyze-btn" onclick="analyzePlate()" style="width:100%;padding:13px;background:var(--green);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;display:none">✨ Analisar prato com IA</button>
+    </div>
+    <div id="plate-result"></div>
+    <div style="height:16px"></div>
+  </div>
+
   <div class="bottomnav">
-    <button class="bnav-item" onclick="stopCameraAndGoBack()"><span class="nav-emoji">📖</span><span>Diário</span></button>
+    <button class="bnav-item" onclick="showScreen('diary')"><span class="nav-emoji">📖</span><span>Diário</span></button>
     <button class="bnav-item" onclick="showScreen('history')"><span class="nav-emoji">📊</span><span>Histórico</span></button>
     <button class="bnav-item active" onclick="showScreen('scan')"><span class="nav-emoji">📷</span><span>Scanner</span></button>
     <button class="bnav-item" onclick="showScreen('profile')"><span class="nav-emoji">👤</span><span>Perfil</span></button>
@@ -633,33 +669,63 @@ function startCamera(){
   }).catch(()=>{showToast('❌ Permissão de câmera negada');btn.textContent='📷 Ativar câmera'});
 }
 
-function searchBarcode(code){
+function showBarcodeResult(food, bc, resultDiv){
+  resultDiv.innerHTML=`
+    <div class="meal-section" style="margin-bottom:0">
+      <div style="padding:14px">
+        <div style="font-size:15px;font-weight:600;margin-bottom:2px">${food.name}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${food.brand} &bull; Código: ${bc}</div>
+        <div class="portion-macros" style="margin-bottom:12px">
+          <div class="pm-item"><div class="pm-val pm-cal">${Math.round(food.cal)}</div><div class="pm-lbl">kcal</div></div>
+          <div class="pm-item"><div class="pm-val pm-prot">${Math.round(food.prot)}g</div><div class="pm-lbl">Proteína</div></div>
+          <div class="pm-item"><div class="pm-val pm-carb">${Math.round(food.carb)}g</div><div class="pm-lbl">Carb</div></div>
+          <div class="pm-item"><div class="pm-val pm-fat">${Math.round(food.fat)}g</div><div class="pm-lbl">Gordura</div></div>
+        </div>
+        <button class="add-confirm-btn" onclick="(function(){
+          state.selectedFood={id:9999,name:'${food.name.replace(/'/g,"\\'")}',brand:'${food.brand.replace(/'/g,"\\'")}',cal:${food.cal},prot:${food.prot},carb:${food.carb},fat:${food.fat},per:100};
+          openPortionModal(state.selectedFood);
+        })()">✅ Adicionar ao diário</button>
+      </div>
+    </div>`;
+  showToast('✅ Produto encontrado!');
+}
+
+async function searchBarcode(code){
   const input=document.getElementById('manual-barcode');
   const bc=code||input.value.trim();
   if(!bc){showToast('Insira um código');return;}
-  const food=foodDB.find(f=>f.barcode===bc);
   const resultDiv=document.getElementById('barcode-result');
-  if(food){
-    resultDiv.innerHTML=`
-      <div class="meal-section" style="margin-bottom:0">
-        <div style="padding:14px">
-          <div style="font-size:15px;font-weight:600;margin-bottom:2px">${food.name}</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${food.brand} &bull; Código: ${bc}</div>
-          <div class="portion-macros" style="margin-bottom:12px">
-            <div class="pm-item"><div class="pm-val pm-cal">${food.cal}</div><div class="pm-lbl">kcal</div></div>
-            <div class="pm-item"><div class="pm-val pm-prot">${food.prot}g</div><div class="pm-lbl">Proteína</div></div>
-            <div class="pm-item"><div class="pm-val pm-carb">${food.carb}g</div><div class="pm-lbl">Carb</div></div>
-            <div class="pm-item"><div class="pm-val pm-fat">${food.fat}g</div><div class="pm-lbl">Gordura</div></div>
-          </div>
-          <button class="add-confirm-btn" onclick="(function(){state.selectedFood=foodDB.find(f=>f.id==${food.id});stopCameraAndGoBack();setTimeout(()=>openPortionModal(state.selectedFood),300)})()">
-            ✅ Adicionar ao diário
-          </button>
-        </div>
-      </div>`;
-    showToast('✅ Produto encontrado!');
-  } else {
-    resultDiv.innerHTML=`<div class="empty-state"><span class="em">🔍</span>Código <b>${bc}</b> não encontrado.<br><br><small>Tente: 7891025100517 · 7896063294014<br>7896001249367 · 7898215151219 · 7891000315507</small></div>`;
+
+  // 1. Look in local DB first
+  const local=foodDB.find(f=>f.barcode===bc);
+  if(local){
+    showBarcodeResult({name:local.name,brand:local.brand,cal:local.cal,prot:local.prot,carb:local.carb,fat:local.fat}, bc, resultDiv);
+    return;
   }
+
+  // 2. Try Open Food Facts API
+  resultDiv.innerHTML=`<div class="empty-state"><span class="em">🔎</span>Buscando produto online...</div>`;
+  try {
+    const resp = await fetch(`https://world.openfoodfacts.org/api/v0/product/${bc}.json`);
+    const data = await resp.json();
+    if(data.status===1 && data.product){
+      const p=data.product;
+      const n=p.nutriments||{};
+      const per=n['energy-kcal_serving'] ? 'serving' : '100g';
+      const suffix = per==='serving' ? '_serving' : '_100g';
+      const cal=n['energy-kcal'+suffix]||n['energy-kcal']||0;
+      const prot=n['proteins'+suffix]||n['proteins']||0;
+      const carb=n['carbohydrates'+suffix]||n['carbohydrates']||0;
+      const fat=n['fat'+suffix]||n['fat']||0;
+      const name=p.product_name_pt||p.product_name||p.abbreviated_product_name||'Produto';
+      const brand=p.brands||'Open Food Facts';
+      showBarcodeResult({name,brand,cal,prot,carb,fat}, bc, resultDiv);
+      return;
+    }
+  } catch(e){}
+
+  // 3. Not found anywhere
+  resultDiv.innerHTML=`<div class="empty-state"><span class="em">🔍</span>Código <b>${bc}</b> não encontrado.<br><br><small>Produto não está na base local nem no Open Food Facts.</small></div>`;
 }
 
 function calcNeeds(){
@@ -721,9 +787,151 @@ function renderHistory(){
   }).join('')+'</div>';
 }
 
+
+// ---- SCAN TABS ----
+function switchScanTab(tab){
+  const isBarcode = tab==='barcode';
+  document.getElementById('scan-tab-barcode').style.display = isBarcode ? '' : 'none';
+  document.getElementById('scan-tab-plate').style.display = isBarcode ? 'none' : '';
+  document.getElementById('tab-barcode').style.cssText = isBarcode
+    ? 'flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer'
+    : 'flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer';
+  document.getElementById('tab-plate').style.cssText = isBarcode
+    ? 'flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer'
+    : 'flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;color:var(--green);border-bottom:2px solid var(--green);cursor:pointer';
+  if(!isBarcode && codeReader){try{codeReader.reset();}catch(e){} codeReader=null;}
+}
+
+// ---- PLATE SCANNER ----
+let plateImageBase64 = null;
+
+function openPlateCamera(){document.getElementById('plate-file-camera').click();}
+function openPlateGallery(){document.getElementById('plate-file-gallery').click();}
+
+function handlePlateImage(input){
+  if(!input.files||!input.files[0]) return;
+  const file=input.files[0];
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const dataUrl=e.target.result;
+    const img=document.getElementById('plate-preview-img');
+    img.src=dataUrl;
+    img.style.display='block';
+    document.getElementById('plate-placeholder').style.display='none';
+    // Store base64 without prefix
+    plateImageBase64=dataUrl.split(',')[1];
+    document.getElementById('plate-analyze-btn').style.display='block';
+    document.getElementById('plate-result').innerHTML='';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analyzePlate(){
+  if(!plateImageBase64){showToast('Selecione uma foto primeiro');return;}
+  const btn=document.getElementById('plate-analyze-btn');
+  btn.textContent='⏳ Analisando com IA...';
+  btn.disabled=true;
+  document.getElementById('plate-result').innerHTML='<div class="empty-state"><span class="em">🤖</span>A IA está identificando os alimentos do seu prato...</div>';
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        messages:[{
+          role:'user',
+          content:[
+            {type:'image',source:{type:'base64',media_type:'image/jpeg',data:plateImageBase64}},
+            {type:'text',text:`Você é um nutricionista especializado. Analise esta imagem de um prato de comida e estime os alimentos presentes e suas calorias/macros.
+
+Responda APENAS em JSON puro, sem markdown, sem backticks, no formato:
+{
+  "descricao": "descrição breve do prato",
+  "itens": [
+    {"nome": "Nome do alimento", "quantidade": "150g", "cal": 200, "prot": 15, "carb": 20, "fat": 5},
+    ...
+  ],
+  "total": {"cal": 500, "prot": 35, "carb": 45, "fat": 12}
+}
+
+Use estimativas realistas para porções típicas brasileiras. Seja específico nos nomes dos alimentos.`}
+          ]
+        }]
+      })
+    });
+
+    const data=await resp.json();
+    const text=data.content.map(i=>i.text||'').join('');
+    let result;
+    try { result=JSON.parse(text.replace(/```json|```/g,'').trim()); }
+    catch(e){ throw new Error('Resposta inválida da IA'); }
+
+    renderPlateResult(result);
+  } catch(err){
+    document.getElementById('plate-result').innerHTML=`<div class="empty-state"><span class="em">❌</span>Erro ao analisar: ${err.message}<br><small>Verifique sua conexão e tente novamente.</small></div>`;
+  }
+  btn.textContent='✨ Analisar prato com IA';
+  btn.disabled=false;
+}
+
+function renderPlateResult(result){
+  const mealKey=document.getElementById('plate-meal-select').value;
+  const mealName={'cafe':'Café da manhã','almoco':'Almoço','lanche':'Lanche','jantar':'Jantar'}[mealKey];
+
+  let itemsHTML=result.itens.map((item,i)=>`
+    <div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:10px">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">${item.nome}</div>
+        <div style="font-size:11px;color:var(--muted)">${item.quantidade} · P:${item.prot}g C:${item.carb}g G:${item.fat}g</div>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:var(--green-dark)">${item.cal} kcal</div>
+    </div>`).join('');
+
+  document.getElementById('plate-result').innerHTML=`
+    <div style="background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:14px;margin-bottom:10px">
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px">🤖 ${result.descricao}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Estimativa de IA — revise se necessário</div>
+
+      <div class="portion-macros" style="margin-bottom:14px">
+        <div class="pm-item"><div class="pm-val pm-cal">${result.total.cal}</div><div class="pm-lbl">kcal</div></div>
+        <div class="pm-item"><div class="pm-val pm-prot">${result.total.prot}g</div><div class="pm-lbl">Proteína</div></div>
+        <div class="pm-item"><div class="pm-val pm-carb">${result.total.carb}g</div><div class="pm-lbl">Carb</div></div>
+        <div class="pm-item"><div class="pm-val pm-fat">${result.total.fat}g</div><div class="pm-lbl">Gordura</div></div>
+      </div>
+
+      <div style="margin-bottom:14px">${itemsHTML}</div>
+
+      <button onclick="addPlateToMeal(${JSON.stringify(result).replace(/"/g,'&quot;')})" 
+        style="width:100%;padding:13px;background:var(--green);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">
+        ✅ Adicionar tudo ao ${mealName}
+      </button>
+    </div>`;
+}
+
+function addPlateToMeal(result){
+  const mealKey=document.getElementById('plate-meal-select').value;
+  result.itens.forEach(item=>{
+    state.meals[mealKey].items.push({
+      name:item.nome,
+      qty:parseFloat(item.quantidade)||100,
+      qtyUnit:'g',
+      cal:item.cal,
+      prot:item.prot,
+      carb:item.carb,
+      fat:item.fat
+    });
+  });
+  renderMeals();
+  showToast(`✅ ${result.itens.length} itens adicionados!`);
+  showScreen('diary');
+}
+
 document.getElementById('topbar-date').textContent=todayLabel();
 renderMeals();
 updateWaterUI();
+
 </script>
 </body>
 </html>
