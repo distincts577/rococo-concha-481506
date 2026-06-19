@@ -1732,7 +1732,12 @@ function handlePlateImage(input){
 
 // Chave do OpenRouter — uso pessoal, free tier
 function getOpenRouterKey(){ return localStorage.getItem('openrouter_key') || ''; }
-const OPENROUTER_MODEL = 'google/gemma-4-31b-it:free';
+// Modelos free com suporte a visão (fallback em ordem)
+const OPENROUTER_MODELS = [
+  'meta-llama/llama-4-scout:free',
+  'meta-llama/llama-4-maverick:free',
+  'google/gemma-3-27b-it:free',
+];
 
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
@@ -1751,16 +1756,20 @@ function loadORKey(){
   if(inp) inp.value = saved;
 }
 
-async function callVisionAPI(promptText, imageBase64, attempt=1){
-  const maxAttempts=3;
+async function callVisionAPI(promptText, imageBase64, modelIndex=0, attempt=1){
+  const maxAttempts=2;
+  const model = OPENROUTER_MODELS[modelIndex] || OPENROUTER_MODELS[0];
   const resp=await fetch('https://openrouter.ai/api/v1/chat/completions',{
     method:'POST',
     headers:{
       'Content-Type':'application/json',
-      'Authorization':`Bearer ${getOpenRouterKey()}`
+      'Authorization':`Bearer ${getOpenRouterKey()}`,
+      'HTTP-Referer':'https://nutricount.app',
+      'X-Title':'NutriCount'
     },
     body:JSON.stringify({
-      model: OPENROUTER_MODEL,
+      model: model,
+      max_tokens: 1000,
       messages:[{
         role:'user',
         content:[
@@ -1773,10 +1782,16 @@ async function callVisionAPI(promptText, imageBase64, attempt=1){
   const data=await resp.json();
   const isOverloaded = data.error && (data.error.code===503 || /overload|high demand|rate.?limit/i.test(data.error.message||''));
   if(isOverloaded && attempt<maxAttempts){
-    await sleep(attempt*2000); // 2s, depois 4s
-    return callVisionAPI(promptText, imageBase64, attempt+1);
+    await sleep(attempt*2000);
+    return callVisionAPI(promptText, imageBase64, modelIndex, attempt+1);
   }
-  if(data.error) throw new Error(data.error.message||'Erro na API');
+  // Erro de provider: tentar próximo modelo
+  const isProviderErr = data.error && (/provider|upstream|unavailable/i.test(data.error.message||'') || data.error.code===502 || data.error.code===503);
+  if(isProviderErr && modelIndex < OPENROUTER_MODELS.length-1){
+    console.log('Tentando modelo alternativo:', OPENROUTER_MODELS[modelIndex+1]);
+    return callVisionAPI(promptText, imageBase64, modelIndex+1, 1);
+  }
+  if(data.error) throw new Error(`[${model}] ${data.error.message||'Erro na API'}`);
   return data;
 }
 
