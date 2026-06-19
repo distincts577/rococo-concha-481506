@@ -1732,11 +1732,11 @@ function handlePlateImage(input){
 
 // Chave do OpenRouter — uso pessoal, free tier
 function getOpenRouterKey(){ return localStorage.getItem('openrouter_key') || ''; }
-// Modelos free com suporte a visão (fallback em ordem)
+// Roteador automático do OpenRouter — seleciona o melhor modelo free disponível com visão
 const OPENROUTER_MODELS = [
+  'openrouter/free',
   'meta-llama/llama-4-scout:free',
   'meta-llama/llama-4-maverick:free',
-  'google/gemma-3-27b-it:free',
 ];
 
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
