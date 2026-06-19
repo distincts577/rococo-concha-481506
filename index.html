@@ -1726,6 +1726,30 @@ function handlePlateImage(input){
 // Chave do Gemini API (AI Studio) — uso pessoal, free tier
 const GEMINI_KEY = 'AQ.Ab8RN6KyJiywATU92dCO3YimnQbyx-7gRyRGFh47jzJ43wI1kw';
 
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function callGeminiVision(promptText, imageBase64, attempt=1){
+  const maxAttempts=3;
+  const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      contents:[{parts:[
+        {text:promptText},
+        {inline_data:{mime_type:'image/jpeg',data:imageBase64}}
+      ]}]
+    })
+  });
+  const data=await resp.json();
+  const isOverloaded = data.error && (data.error.code===503 || /overload|high demand/i.test(data.error.message||''));
+  if(isOverloaded && attempt<maxAttempts){
+    await sleep(attempt*2000); // 2s, depois 4s
+    return callGeminiVision(promptText, imageBase64, attempt+1);
+  }
+  if(data.error) throw new Error(data.error.message||'Erro na API');
+  return data;
+}
+
 async function analyzePlate(){
   if(!plateImageBase64){showToast('Selecione uma foto primeiro');return;}
   const btn=document.getElementById('plate-analyze-btn');
@@ -1733,18 +1757,7 @@ async function analyzePlate(){
   document.getElementById('plate-result').innerHTML='<div class="empty-state"><span class="em">🤖</span>A IA está identificando os alimentos do seu prato...</div>';
   try{
     const promptText=`Você é um nutricionista especializado. Analise esta imagem de um prato de comida e estime os alimentos presentes e suas calorias/macros.\n\nResponda APENAS em JSON puro, sem markdown, sem backticks, no formato:\n{\n  "descricao": "descrição breve do prato",\n  "itens": [\n    {"nome": "Nome do alimento", "quantidade": "150g", "cal": 200, "prot": 15, "carb": 20, "fat": 5},\n    ...\n  ],\n  "total": {"cal": 500, "prot": 35, "carb": 45, "fat": 12}\n}\n\nUse estimativas realistas para porções típicas brasileiras. Seja específico nos nomes dos alimentos.`;
-    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        contents:[{parts:[
-          {text:promptText},
-          {inline_data:{mime_type:'image/jpeg',data:plateImageBase64}}
-        ]}]
-      })
-    });
-    const data=await resp.json();
-    if(data.error) throw new Error(data.error.message||'Erro na API');
+    const data = await callGeminiVision(promptText, plateImageBase64);
     const text=(data.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('');
     let result; try{result=JSON.parse(text.replace(/```json|```/g,'').trim());}catch(e){throw new Error('Resposta inválida da IA');}
     if(!result.itens||!result.total) throw new Error('Resposta da IA em formato inesperado');
