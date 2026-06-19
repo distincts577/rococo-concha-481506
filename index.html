@@ -359,7 +359,10 @@
 <!-- SCANNER -->
 <div class="screen" id="screen-scan">
   <div class="topbar">
-    <div class="topbar-left"><div class="topbar-title">📷 Scanner</div></div>
+    <div class="topbar-left" style="flex-direction:row;align-items:center;gap:10px">
+      <button class="back-btn" onclick="stopCamera();showScreen('diary')">← Voltar</button>
+      <div class="topbar-title">📷 Scanner</div>
+    </div>
   </div>
 
   <!-- Tabs -->
@@ -442,6 +445,21 @@
         <div style="font-size:12px;color:var(--muted);margin-top:2px">Toque no avatar para trocar a foto</div>
       </div>
     </div>
+    <!-- GRÁFICO DE PESO -->
+    <div class="calc-card" id="weight-card">
+      <h3>⚖️ Evolução do Peso</h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input type="number" id="weight-input" placeholder="Ex: 75.5" step="0.1" min="30" max="300"
+          style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;outline:none;background:var(--input-bg);color:var(--text)">
+        <button onclick="logWeight()" style="padding:9px 16px;background:var(--green);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">+ Registrar</button>
+      </div>
+      <div id="weight-chart-wrap" style="display:none">
+        <canvas id="weight-chart" height="120" style="width:100%;display:block"></canvas>
+        <div id="weight-stats" style="display:flex;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--muted)"></div>
+      </div>
+      <div id="weight-empty" style="text-align:center;padding:12px;color:var(--muted);font-size:13px">Registre seu peso para acompanhar a evolução</div>
+    </div>
+
     <div class="calc-card">
       <h3>🧮 Calculadora de necessidades</h3>
       <div class="fields-2col">
@@ -470,6 +488,16 @@
           <option value="0" selected>Manter peso</option>
           <option value="300">Ganhar massa (+300 kcal)</option>
           <option value="500">Ganhar massa (+500 kcal)</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label>💪 Meta de proteína (g/kg de peso)</label>
+        <select id="p-prot-multiplier">
+          <option value="1.6">1.6 g/kg — Manutenção / leve atividade</option>
+          <option value="1.8">1.8 g/kg — Atividade moderada</option>
+          <option value="2.0" selected>2.0 g/kg — Ganho de massa (recomendado)</option>
+          <option value="2.2">2.2 g/kg — Alta performance</option>
+          <option value="2.4">2.4 g/kg — Corte (preservar massa)</option>
         </select>
       </div>
       <button class="calc-btn" onclick="calcNeeds()">✨ Calcular</button>
@@ -796,6 +824,7 @@ function showScreen(name){
   document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll(`.bnav-item[data-screen="${name}"]`).forEach(b=>b.classList.add('active'));
   if(name==='history') renderHistory();
+  if(name==='profile') renderWeightChart();
 }
 
 // ===== MODO ESCURO =====
@@ -1405,7 +1434,10 @@ function calcNeeds(){
   if(!age||!weight||!height){showToast('⚠️ Preencha todos os campos');return;}
   let tmb=sex==='m'?(10*weight)+(6.25*height)-(5*age)+5:(10*weight)+(6.25*height)-(5*age)-161;
   const get=tmb*activity,meta=get+goal;
-  const protG=Math.round((meta*0.30)/4),carbG=Math.round((meta*0.45)/4),fatG=Math.round((meta*0.25)/9);
+  const protMult=parseFloat(document.getElementById('p-prot-multiplier').value)||2.0;
+  const protG=Math.round(weight*protMult);
+  const fatG=Math.round((meta*0.25)/9);
+  const carbG=Math.round((meta - protG*4 - fatG*9)/4);
   const water=Math.round(weight*35);
   document.getElementById('r-tmb').textContent=Math.round(tmb)+' kcal';
   document.getElementById('r-get').textContent=Math.round(get)+' kcal';
@@ -1691,26 +1723,31 @@ function handlePlateImage(input){
   reader.readAsDataURL(file);
 }
 
+// Chave do Gemini API (AI Studio) — uso pessoal, free tier
+const GEMINI_KEY = 'AQ.Ab8RN6KyJiywATU92dCO3YimnQbyx-7gRyRGFh47jzJ43wI1kw';
+
 async function analyzePlate(){
   if(!plateImageBase64){showToast('Selecione uma foto primeiro');return;}
   const btn=document.getElementById('plate-analyze-btn');
   btn.textContent='⏳ Analisando com IA...'; btn.disabled=true;
   document.getElementById('plate-result').innerHTML='<div class="empty-state"><span class="em">🤖</span>A IA está identificando os alimentos do seu prato...</div>';
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    const promptText=`Você é um nutricionista especializado. Analise esta imagem de um prato de comida e estime os alimentos presentes e suas calorias/macros.\n\nResponda APENAS em JSON puro, sem markdown, sem backticks, no formato:\n{\n  "descricao": "descrição breve do prato",\n  "itens": [\n    {"nome": "Nome do alimento", "quantidade": "150g", "cal": 200, "prot": 15, "carb": 20, "fat": 5},\n    ...\n  ],\n  "total": {"cal": 500, "prot": 35, "carb": 45, "fat": 12}\n}\n\nUse estimativas realistas para porções típicas brasileiras. Seja específico nos nomes dos alimentos.`;
+    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-6',max_tokens:1000,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:plateImageBase64}},
-          {type:'text',text:`Você é um nutricionista especializado. Analise esta imagem de um prato de comida e estime os alimentos presentes e suas calorias/macros.\n\nResponda APENAS em JSON puro, sem markdown, sem backticks, no formato:\n{\n  "descricao": "descrição breve do prato",\n  "itens": [\n    {"nome": "Nome do alimento", "quantidade": "150g", "cal": 200, "prot": 15, "carb": 20, "fat": 5},\n    ...\n  ],\n  "total": {"cal": 500, "prot": 35, "carb": 45, "fat": 12}\n}\n\nUse estimativas realistas para porções típicas brasileiras. Seja específico nos nomes dos alimentos.`}
+        contents:[{parts:[
+          {text:promptText},
+          {inline_data:{mime_type:'image/jpeg',data:plateImageBase64}}
         ]}]
       })
     });
     const data=await resp.json();
-    const text=data.content.map(i=>i.text||'').join('');
+    if(data.error) throw new Error(data.error.message||'Erro na API');
+    const text=(data.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('');
     let result; try{result=JSON.parse(text.replace(/```json|```/g,'').trim());}catch(e){throw new Error('Resposta inválida da IA');}
+    if(!result.itens||!result.total) throw new Error('Resposta da IA em formato inesperado');
     renderPlateResult(result);
   }catch(err){
     document.getElementById('plate-result').innerHTML=`<div class="empty-state"><span class="em">❌</span>Erro ao analisar: ${err.message}<br><small>Verifique sua conexão e tente novamente.</small></div>`;
@@ -1929,6 +1966,146 @@ function renderFoodList(localItems, extraItems){
   }).join('');
 }
 
+// ===== REGISTRO DE PESO =====
+function getWeightLog(){ return LS.get('weight_log', []); }
+function logWeight(){
+  const val = parseFloat(document.getElementById('weight-input').value);
+  if(!val || val < 20 || val > 400){ showToast('⚠️ Peso inválido'); return; }
+  const log = getWeightLog();
+  const today = todayKey();
+  const existing = log.findIndex(e => e.date === today);
+  if(existing >= 0) log[existing].w = val;
+  else log.push({ date: today, w: val });
+  log.sort((a,b) => a.date.localeCompare(b.date));
+  LS.set('weight_log', log);
+  document.getElementById('weight-input').value = '';
+  renderWeightChart();
+  showToast('⚖️ Peso registrado: ' + val + ' kg');
+}
+
+function renderWeightChart(){
+  const log = getWeightLog();
+  const wrap = document.getElementById('weight-chart-wrap');
+  const empty = document.getElementById('weight-empty');
+  if(!log.length){ wrap.style.display='none'; empty.style.display='block'; return; }
+  wrap.style.display='block'; empty.style.display='none';
+
+  const canvas = document.getElementById('weight-chart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth || 300;
+  const H = 120;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  const last30 = log.slice(-30);
+  const weights = last30.map(e => e.w);
+  const minW = Math.min(...weights) - 1;
+  const maxW = Math.max(...weights) + 1;
+  const pad = { t: 10, r: 10, b: 28, l: 36 };
+  const cW = W - pad.l - pad.r;
+  const cH = H - pad.t - pad.b;
+
+  // Grid lines
+  const isDark = document.body.classList.contains('dark');
+  ctx.strokeStyle = isDark ? '#2a3d24' : '#e8e8e0';
+  ctx.lineWidth = 1;
+  for(let i=0; i<=4; i++){
+    const y = pad.t + (cH / 4) * i;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cW, y); ctx.stroke();
+    const val = maxW - ((maxW - minW) / 4) * i;
+    ctx.fillStyle = isDark ? '#8aab7e' : '#888780';
+    ctx.font = '10px system-ui'; ctx.textAlign = 'right';
+    ctx.fillText(val.toFixed(1), pad.l - 4, y + 3);
+  }
+
+  // Line + dots
+  const getX = i => pad.l + (i / (last30.length - 1 || 1)) * cW;
+  const getY = w => pad.t + cH - ((w - minW) / (maxW - minW || 1)) * cH;
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#639922'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+  last30.forEach((e, i) => {
+    const x = getX(i), y = getY(e.w);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Fill under line
+  ctx.beginPath();
+  last30.forEach((e, i) => { const x=getX(i),y=getY(e.w); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.lineTo(getX(last30.length-1), pad.t+cH);
+  ctx.lineTo(getX(0), pad.t+cH); ctx.closePath();
+  ctx.fillStyle = isDark ? 'rgba(99,153,34,0.15)' : 'rgba(99,153,34,0.12)';
+  ctx.fill();
+
+  // Dots + date labels
+  last30.forEach((e, i) => {
+    const x = getX(i), y = getY(e.w);
+    ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI*2);
+    ctx.fillStyle = '#639922'; ctx.fill();
+    if(i === 0 || i === last30.length-1 || last30.length <= 7){
+      const d = e.date.split('-'); // yyyy-mm-dd
+      ctx.fillStyle = isDark ? '#8aab7e' : '#888780';
+      ctx.font = '9px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText(d[2]+'/'+d[1], x, H - 6);
+    }
+  });
+
+  // Stats
+  const first = weights[0], last = weights[weights.length-1];
+  const diff = (last - first).toFixed(1);
+  const sign = diff > 0 ? '+' : '';
+  const color = diff < 0 ? 'var(--green-mid)' : diff > 0 ? 'var(--red-mid)' : 'var(--muted)';
+  document.getElementById('weight-stats').innerHTML =
+    '<span>Início: <b>'+first+' kg</b></span>' +
+    '<span style="color:'+color+'">Variação: <b>'+sign+diff+' kg</b></span>' +
+    '<span>Atual: <b>'+last+' kg</b></span>';
+}
+
+// ===== SERVICE WORKER (OFFLINE) =====
+if('serviceWorker' in navigator){
+  // Inline SW via blob para funcionar sem arquivo externo
+  const swCode = `
+const CACHE = 'nutricount-v1';
+const ASSETS = ['/'];
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+});
+self.addEventListener('fetch', e => {
+  if(e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  // APIs externas: network first, sem cache
+  if(url.hostname.includes('openfoodfacts') || url.hostname.includes('nal.usda') || url.hostname.includes('generativelanguage')){
+    e.respondWith(fetch(e.request).catch(()=>new Response('[]',{headers:{'Content-Type':'application/json'}})));
+    return;
+  }
+  // App shell: cache first
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      if(cached) return cached;
+      return fetch(e.request).then(resp => {
+        if(resp.ok){
+          const clone = resp.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return resp;
+      }).catch(() => cached);
+    })
+  );
+});
+  `;
+  const blob = new Blob([swCode], {type:'application/javascript'});
+  const swUrl = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl, {scope:'/'})
+    .then(() => console.log('SW registrado'))
+    .catch(e => console.log('SW erro:', e));
+}
+
 // ===== INIT =====
 document.getElementById('topbar-date').textContent=todayLabel();
 initDark();
@@ -1936,6 +2113,7 @@ loadProfile();
 renderMeals();
 updateWaterUI();
 checkNotifBanner();
+renderWeightChart();
 
 // Auto-save a cada mudança de dia à meia-noite
 (function checkMidnight(){
