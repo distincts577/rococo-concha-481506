@@ -412,6 +412,13 @@
           <option value="jantar">🌙 Jantar</option>
         </select>
       </div>
+      <div id="openrouter-key-box" style="margin-bottom:10px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">🔑 Chave OpenRouter (<a href="https://openrouter.ai/keys" target="_blank" style="color:var(--green-mid)">obter grátis</a>)</div>
+        <div style="display:flex;gap:6px">
+          <input type="password" id="openrouter-key-input" placeholder="sk-or-v1-..." style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none" oninput="saveORKey(this.value)">
+          <button onclick="toggleKeyVisibility()" style="padding:8px 10px;background:var(--gray-50);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:14px" id="key-eye-btn">👁️</button>
+        </div>
+      </div>
       <button id="plate-analyze-btn" onclick="analyzePlate()" style="width:100%;padding:13px;background:var(--green);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;display:none">✨ Analisar prato com IA</button>
     </div>
     <div id="plate-result"></div>
@@ -1724,10 +1731,25 @@ function handlePlateImage(input){
 }
 
 // Chave do OpenRouter — uso pessoal, free tier
-const OPENROUTER_KEY = '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';
+function getOpenRouterKey(){ return localStorage.getItem('openrouter_key') || ''; }
 const OPENROUTER_MODEL = 'google/gemma-4-31b-it:free';
 
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+function saveORKey(val){
+  localStorage.setItem('openrouter_key', val.trim());
+}
+function toggleKeyVisibility(){
+  const inp = document.getElementById('openrouter-key-input');
+  const btn = document.getElementById('key-eye-btn');
+  if(inp.type === 'password'){ inp.type='text'; btn.textContent='🙈'; }
+  else { inp.type='password'; btn.textContent='👁️'; }
+}
+function loadORKey(){
+  const saved = localStorage.getItem('openrouter_key') || '';
+  const inp = document.getElementById('openrouter-key-input');
+  if(inp) inp.value = saved;
+}
 
 async function callVisionAPI(promptText, imageBase64, attempt=1){
   const maxAttempts=3;
@@ -1735,7 +1757,7 @@ async function callVisionAPI(promptText, imageBase64, attempt=1){
     method:'POST',
     headers:{
       'Content-Type':'application/json',
-      'Authorization':`Bearer ${OPENROUTER_KEY}`
+      'Authorization':`Bearer ${getOpenRouterKey()}`
     },
     body:JSON.stringify({
       model: OPENROUTER_MODEL,
@@ -1760,6 +1782,7 @@ async function callVisionAPI(promptText, imageBase64, attempt=1){
 
 async function analyzePlate(){
   if(!plateImageBase64){showToast('Selecione uma foto primeiro');return;}
+  if(!getOpenRouterKey()){showToast('Insira sua chave OpenRouter primeiro');document.getElementById('openrouter-key-input').focus();return;}
   const btn=document.getElementById('plate-analyze-btn');
   btn.textContent='⏳ Analisando com IA...'; btn.disabled=true;
   document.getElementById('plate-result').innerHTML='<div class="empty-state"><span class="em">🤖</span>A IA está identificando os alimentos do seu prato...</div>';
@@ -2089,6 +2112,7 @@ function renderWeightChart(){
 // SW desativado: requer arquivo externo sw.js em servidor HTTPS/localhost.
 // ===== INIT =====
 document.getElementById('topbar-date').textContent=todayLabel();
+loadORKey();
 initDark();
 loadProfile();
 renderMeals();
