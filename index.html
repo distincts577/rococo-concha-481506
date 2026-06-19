@@ -1725,7 +1725,7 @@ function handlePlateImage(input){
 
 // Chave do OpenRouter — uso pessoal, free tier
 const OPENROUTER_KEY = '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';
-const OPENROUTER_MODEL = 'meta-llama/llama-4-maverick:free';
+const OPENROUTER_MODEL = 'google/gemma-4-31b-it:free';
 
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
@@ -2086,47 +2086,7 @@ function renderWeightChart(){
 }
 
 // ===== SERVICE WORKER (OFFLINE) =====
-if('serviceWorker' in navigator){
-  // Inline SW via blob para funcionar sem arquivo externo
-  const swCode = `
-const CACHE = 'nutricount-v1';
-const ASSETS = ['/'];
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
-});
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
-});
-self.addEventListener('fetch', e => {
-  if(e.request.method !== 'GET') return;
-  const url = new URL(e.request.url);
-  // APIs externas: network first, sem cache
-  if(url.hostname.includes('openfoodfacts') || url.hostname.includes('nal.usda') || url.hostname.includes('openrouter')){
-    e.respondWith(fetch(e.request).catch(()=>new Response('[]',{headers:{'Content-Type':'application/json'}})));
-    return;
-  }
-  // App shell: cache first
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if(cached) return cached;
-      return fetch(e.request).then(resp => {
-        if(resp.ok){
-          const clone = resp.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return resp;
-      }).catch(() => cached);
-    })
-  );
-});
-  `;
-  const blob = new Blob([swCode], {type:'application/javascript'});
-  const swUrl = URL.createObjectURL(blob);
-  navigator.serviceWorker.register(swUrl, {scope:'/'})
-    .then(() => console.log('SW registrado'))
-    .catch(e => console.log('SW erro:', e));
-}
-
+// SW desativado: requer arquivo externo sw.js em servidor HTTPS/localhost.
 // ===== INIT =====
 document.getElementById('topbar-date').textContent=todayLabel();
 initDark();
